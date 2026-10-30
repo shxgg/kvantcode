@@ -1,0 +1,121 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-glow: var(--glow);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.14 0.045 266); /* #050B1F */
+  --foreground: oklch(0.98 0.005 250);
+  --card: oklch(0.18 0.05 265);
+  --card-foreground: oklch(0.98 0.005 250);
+  --popover: oklch(0.18 0.05 265);
+  --popover-foreground: oklch(0.98 0.005 250);
+  --primary: oklch(0.546 0.215 262.9); /* #2563EB */
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.22 0.05 264);
+  --secondary-foreground: oklch(0.95 0.01 250);
+  --muted: oklch(0.22 0.04 264);
+  --muted-foreground: oklch(0.72 0.04 255);
+  --accent: oklch(0.754 0.139 232.7); /* #38BDF8 */
+  --accent-foreground: oklch(0.14 0.045 266);
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.546 0.215 262.9 / 22%);
+  --input: oklch(0.546 0.215 262.9 / 30%);
+  --ring: oklch(0.754 0.139 232.7);
+  --glow: oklch(0.754 0.139 232.7);
+  --gradient-primary: linear-gradient(135deg, var(--primary), var(--accent));
+  --shadow-glow: 0 0 0 1px color-mix(in oklab, var(--accent) 40%, transparent),
+    0 10px 40px -8px color-mix(in oklab, var(--primary) 70%, transparent);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
+}
+
+@utility bg-gradient-primary { background-image: var(--gradient-primary); }
+@utility text-gradient {
+  background-image: var(--gradient-primary);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+@utility shadow-glow { box-shadow: var(--shadow-glow); }
+
+@utility tech-grid {
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--primary) 14%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--primary) 14%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  animation: grid-move 20s linear infinite;
+}
+
+@utility glow-card {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--card) 90%, transparent), color-mix(in oklab, var(--background) 80%, transparent));
+  border: 1px solid var(--border);
+  transition: box-shadow .4s, border-color .4s, transform .4s;
+  &:hover {
+    border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-4px);
+  }
+}
+
+@utility animate-marquee { animation: marquee 35s linear infinite; }
+@utility animate-blink { animation: blink 1s step-end infinite; }
+
+@utility reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity .8s ease, transform .8s ease;
+  &.is-visible { opacity: 1; transform: none; }
+}
+
+@keyframes grid-move { to { background-position: 48px 48px; } }
+@keyframes marquee { to { transform: translateX(-50%); } }
+@keyframes blink { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .reveal { opacity: 1; transform: none; }
+}
