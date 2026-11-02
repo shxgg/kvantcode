@@ -1,3 +1,4 @@
+
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   useEffect,
@@ -7,6 +8,10 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  clearPasswordRecovery,
+  usePasswordRecoveryState,
+} from "@/integrations/supabase/password-recovery";
 import logoMark from "@/assets/kvant-logo.png";
 
 export const Route = createFileRoute("/panel")({
@@ -101,6 +106,8 @@ type DashboardData = {
 };
 
 function PanelPage() {
+  const recovery = usePasswordRecoveryState();
+
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -110,15 +117,22 @@ function PanelPage() {
     const loadSession = async () => {
       const {
         data: { session },
+        error,
       } = await supabase.auth.getSession();
 
-      if (mounted) {
+      if (!mounted) return;
+
+      if (error) {
+        console.error("Error obteniendo sesión:", error);
+        setSession(null);
+      } else {
         setSession(session);
-        setLoading(false);
       }
+
+      setLoading(false);
     };
 
-    loadSession();
+    void loadSession();
 
     const {
       data: { subscription },
@@ -134,8 +148,44 @@ function PanelPage() {
     };
   }, []);
 
-  if (loading) {
+  // Esperar a que se verifiquen la sesión y el estado de recuperación.
+  if (loading || !recovery.ready) {
     return <LoadingScreen />;
+  }
+
+  // Bloquear el acceso al panel mientras exista una recuperación pendiente.
+  if (recovery.pending) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-xl">
+          <div className="mb-5 text-4xl">🔐</div>
+
+          <h1 className="text-2xl font-semibold">
+            Recuperación de contraseña
+          </h1>
+
+          <p className="mt-3 text-sm text-muted-foreground">
+            Para continuar, primero tenés que establecer una nueva
+            contraseña desde el enlace de recuperación.
+          </p>
+
+          <Link
+            to="/reset-password"
+            className={`${btn} mt-7 w-full`}
+          >
+            Continuar con la recuperación
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => void supabase.auth.signOut()}
+            className={`${btnGhost} mt-4`}
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </main>
+    );
   }
 
   if (!session) {
@@ -164,6 +214,8 @@ function PanelLogin() {
 
     if (error) {
       setError("Correo o contraseña incorrectos.");
+    } else {
+      clearPasswordRecovery();
     }
 
     setLoading(false);
@@ -203,7 +255,7 @@ function PanelLogin() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="usuario@kvantcode.ar"
+                placeholder="Correo electrónico"
                 className={input}
                 autoComplete="email"
                 required
@@ -375,6 +427,12 @@ function PanelShell({
             <span className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-muted-foreground">
               {role}
             </span>
+
+            {role === "admin" && (
+              <Link to="/admin" className={btnGhost}>
+                Administración
+              </Link>
+            )}
 
             <Link to="/" className={btnGhost}>
               Sitio
