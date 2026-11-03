@@ -8,6 +8,9 @@ export const defaultSite = {
     phone: "+54 9 11 3216-9646",
     location: "Buenos Aires, Argentina",
   },
+  footer: {
+    description: "Tecnología que impulsa tu negocio.",
+  },
   socials: [
     { label: "LinkedIn", href: "https://linkedin.com" },
     { label: "Instagram", href: "https://instagram.com" },
@@ -89,6 +92,7 @@ export function mergeContent(saved: unknown): SiteContent {
     ...d,
     ...s,
     contact: { ...d.contact, ...(s.contact ?? {}) },
+    footer: { ...d.footer, ...(s.footer ?? {}) },
     hero: { ...d.hero, ...(s.hero ?? {}) },
     process: { ...d.process, ...(s.process ?? {}) },
     cta: { ...d.cta, ...(s.cta ?? {}) },

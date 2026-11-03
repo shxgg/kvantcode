@@ -11,7 +11,8 @@ import {
   clearPasswordRecovery,
   usePasswordRecoveryState,
 } from "@/integrations/supabase/password-recovery";
-import logoMark from "@/assets/kvant-logo.png";
+import logoIcon from "@/assets/branding/kvantcode-icon-512.png";
+import logoHorizontal from "@/assets/branding/kvantcode-horizontal.png";
 
 export const Route = createFileRoute("/panel")({
   ssr: false,
@@ -240,7 +241,7 @@ function PanelLogin() {
         <div className="w-full rounded-2xl border border-border bg-card p-8 shadow-xl">
           <div className="mb-8 text-center">
             <img
-              src={logoMark}
+              src={logoIcon}
               alt="kvantcode"
               className="mx-auto mb-5 h-14 w-auto"
             />
@@ -402,13 +403,10 @@ function PanelShell({
       <header className="border-b border-border bg-card/70 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <img src={logoMark} alt="kvantcode" className="h-10 w-auto" />
-            <div>
-              <div className="font-semibold">kvantcode</div>
-              <div className="text-xs tracking-wide text-accent">
-                // panel interno
-              </div>
-            </div>
+            <img src={logoHorizontal} alt="kvantcode" className="h-10 w-auto max-w-[190px] object-contain" />
+            <span className="hidden text-xs tracking-wide text-accent sm:inline">
+              // panel interno
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -3250,7 +3248,7 @@ function LoadingScreen() {
     <main className="flex min-h-screen items-center justify-center bg-background text-foreground">
       <div className="text-center">
         <img
-          src={logoMark}
+          src={logoIcon}
           alt="kvantcode"
           className="mx-auto mb-4 h-12 w-auto opacity-80"
         />

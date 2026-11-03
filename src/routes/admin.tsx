@@ -8,7 +8,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { mergeContent, type SiteContent } from "@/content/site";
-import logoMark from "@/assets/kvant-logo.png";
+import logoHorizontal from "@/assets/branding/kvantcode-horizontal.png";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -93,10 +93,9 @@ function AdminPage() {
         <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-4">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 font-mono font-bold"
+            className="inline-flex items-center gap-3"
           >
-            <img src={logoMark} alt="" className="h-7 w-7 object-contain" />
-            kvantcode<span className="text-accent">.</span>
+            <img src={logoHorizontal} alt="kvantcode" className="h-9 w-auto max-w-[190px] object-contain" />
             <span className="ml-2 text-sm font-normal text-muted-foreground">
               // panel
             </span>
@@ -418,6 +417,23 @@ function Editor({ userId }: { userId: string }) {
             }
           />
         </Field>
+      </Section>
+
+      <Section title="Pie de página (Footer)">
+        <Field label="Descripción debajo del logo" wide>
+          <textarea
+            rows={2}
+            className={input}
+            value={c.footer.description}
+            onChange={(e) =>
+              set("footer", { ...c.footer, description: e.target.value })
+            }
+          />
+        </Field>
+        <div className="sm:col-span-2 text-sm text-muted-foreground">
+          El teléfono, WhatsApp, correo y ubicación del footer se editan en
+          la sección Contacto de arriba. Los enlaces se editan en Redes.
+        </div>
       </Section>
 
       <Section title="Portada">

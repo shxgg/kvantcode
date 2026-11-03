@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { whatsappUrl as waUrl, type SiteContent } from "@/content/site";
 import { getSiteContent } from "@/lib/content.functions";
-import logoMark from "@/assets/kvant-logo.png";
+import logoHorizontal from "@/assets/branding/kvantcode-horizontal.png";
 import designImg from "@/assets/design-hero.jpg";
 
 const TITLE = "kvantcode.ar — Sistemas administrativos y contables para pymes";
@@ -42,13 +42,15 @@ function useReveal() {
   }, []);
 }
 
-function Logo() {
+function Logo({ footer = false }: { footer?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2 font-mono text-lg font-bold tracking-tight">
-      <img src={logoMark} alt="" width={28} height={28} className="h-7 w-7 object-contain" />
-      <span>
-      <span className="text-muted-foreground">&lt;/</span>kvantcode<span className="text-accent">.</span></span>
-    </span>
+    <img
+      src={logoHorizontal}
+      alt="kvantcode"
+      className={footer
+        ? "block h-auto w-full max-w-[205px] object-contain object-left sm:max-w-[220px]"
+        : "h-14 w-auto max-w-[310px] object-contain sm:h-16 sm:max-w-[350px]"}
+    />
   );
 }
 
@@ -226,9 +228,9 @@ function Index() {
       {/* FOOTER */}
       <footer className="border-t border-border bg-card/30">
         <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <Logo />
-            <p className="mt-3 text-sm text-muted-foreground">Sistemas a medida para pymes argentinas.</p>
+          <div className="min-w-0">
+            <Logo footer />
+            <p className="mt-3 text-sm text-muted-foreground">{site.footer.description}</p>
           </div>
           <FooterCol title="Navegación" items={site.nav} />
           <div>
