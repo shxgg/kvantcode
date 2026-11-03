@@ -467,10 +467,7 @@ function PanelShell({
             <ExpensesModule />
           )}
           {section === "Actividad" && role === "admin" && (
-            <PlaceholderModule
-              title="Actividad"
-              description="Registro de actividad del sistema."
-            />
+            <ActivityModule />
           )}
         </main>
       </div>
@@ -2766,6 +2763,205 @@ function LeadsModule({ role }: { role: PanelRole }) {
             })}
           </div>
         )}
+      </div>
+    </ModuleHeader>
+  );
+}
+
+/* =========================================================
+   MÓDULO ACTIVIDAD Y AUDITORÍA (SOLO ADMIN)
+   ========================================================= */
+
+type ActivityRecord = {
+  id: number;
+  at: string;
+  user_id: string | null;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  detail: Record<string, unknown> | null;
+};
+
+const ACTIVITY_PAGE_SIZE = 20;
+
+function activityLabel(value: string) {
+  const labels: Record<string, string> = {
+    INSERT: "Creación", UPDATE: "Modificación", DELETE: "Eliminación",
+    clients: "Clientes", leads: "Prospectos", tasks: "Tareas", expenses: "Gastos",
+  };
+  return labels[value] ?? value;
+}
+
+function ActivityModule() {
+  const [records, setRecords] = useState<ActivityRecord[]>([]);
+  const [profiles, setProfiles] = useState<PanelProfile[]>([]);
+  const [actions, setActions] = useState<string[]>([]);
+  const [entities, setEntities] = useState<string[]>([]);
+  const [action, setAction] = useState("");
+  const [entity, setEntity] = useState("");
+  const [userId, setUserId] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const loadFilters = async () => {
+      const [profilesResult, activityResult] = await Promise.all([
+        supabase.from("profiles").select("id,email,full_name").order("email"),
+        supabase.from("activity_log").select("action,entity").order("at", { ascending: false }).limit(1000),
+      ]);
+      if (!active) return;
+      if (profilesResult.error || activityResult.error) {
+        setError(profilesResult.error?.message ?? activityResult.error?.message ?? "No se pudieron cargar los filtros.");
+        return;
+      }
+      setProfiles((profilesResult.data ?? []) as PanelProfile[]);
+      setActions([...new Set((activityResult.data ?? []).map((row) => row.action))].sort());
+      setEntities([...new Set((activityResult.data ?? []).map((row) => row.entity))].sort());
+    };
+    void loadFilters();
+    return () => { active = false; };
+  }, [refreshKey]);
+
+  useEffect(() => {
+    let active = true;
+    const loadActivity = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        let query = supabase.from("activity_log")
+          .select("id,at,user_id,action,entity,entity_id,detail", { count: "exact" })
+          .order("at", { ascending: false })
+          .order("id", { ascending: false });
+        if (action) query = query.eq("action", action);
+        if (entity) query = query.eq("entity", entity);
+        if (userId === "sin_usuario") query = query.is("user_id", null);
+        else if (userId) query = query.eq("user_id", userId);
+        if (fromDate) query = query.gte("at", new Date(`${fromDate}T00:00:00`).toISOString());
+        if (toDate) {
+          const end = new Date(`${toDate}T00:00:00`);
+          end.setDate(end.getDate() + 1);
+          query = query.lt("at", end.toISOString());
+        }
+        const { data, count, error: queryError } = await query.range(
+          page * ACTIVITY_PAGE_SIZE, (page + 1) * ACTIVITY_PAGE_SIZE - 1,
+        );
+        if (queryError) throw queryError;
+        if (!active) return;
+        setRecords((data ?? []) as ActivityRecord[]);
+        setTotal(count ?? 0);
+      } catch (loadError) {
+        if (!active) return;
+        console.error("Error cargando actividad:", loadError);
+        setError(loadError instanceof Error ? loadError.message : "No se pudo cargar la actividad.");
+        setRecords([]);
+        setTotal(0);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void loadActivity();
+    return () => { active = false; };
+  }, [action, entity, userId, fromDate, toDate, page, refreshKey]);
+
+  const updateFilter = (setter: (value: string) => void, value: string) => {
+    setter(value);
+    setPage(0);
+    setExpandedId(null);
+  };
+  const profileName = (id: string | null) => {
+    if (!id) return "Sin usuario registrado";
+    const profile = profiles.find((item) => item.id === id);
+    return profile?.full_name || profile?.email || `Usuario ${id.slice(0, 8)}…`;
+  };
+  const totalPages = Math.max(1, Math.ceil(total / ACTIVITY_PAGE_SIZE));
+
+  return (
+    <ModuleHeader eyebrow="// AUDITORÍA" title="Actividad"
+      description="Historial de cambios del sistema. Consulta disponible exclusivamente para administradores.">
+      {error && <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>}
+      <div className="mb-6 rounded-xl border border-border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-semibold">Filtrar actividad</h2>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={btnGhost} onClick={() => {
+              setAction(""); setEntity(""); setUserId(""); setFromDate(""); setToDate(""); setPage(0); setExpandedId(null);
+            }}>Limpiar filtros</button>
+            <button type="button" className={btnGhost} disabled={loading} onClick={() => setRefreshKey((value) => value + 1)}>
+              Actualizar
+            </button>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div><label className="mb-1 block text-xs text-muted-foreground">Acción</label>
+            <select className={input} value={action} onChange={(e) => updateFilter(setAction, e.target.value)}>
+              <option value="">Todas</option>{actions.map((value) => <option key={value} value={value}>{activityLabel(value)}</option>)}
+            </select></div>
+          <div><label className="mb-1 block text-xs text-muted-foreground">Módulo</label>
+            <select className={input} value={entity} onChange={(e) => updateFilter(setEntity, e.target.value)}>
+              <option value="">Todos</option>{entities.map((value) => <option key={value} value={value}>{activityLabel(value)}</option>)}
+            </select></div>
+          <div><label className="mb-1 block text-xs text-muted-foreground">Usuario</label>
+            <select className={input} value={userId} onChange={(e) => updateFilter(setUserId, e.target.value)}>
+              <option value="">Todos</option><option value="sin_usuario">Sin usuario</option>
+              {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.full_name || profile.email || profile.id}</option>)}
+            </select></div>
+          <div><label className="mb-1 block text-xs text-muted-foreground">Desde</label>
+            <input type="date" className={input} value={fromDate} max={toDate || undefined}
+              onChange={(e) => updateFilter(setFromDate, e.target.value)} /></div>
+          <div><label className="mb-1 block text-xs text-muted-foreground">Hasta</label>
+            <input type="date" className={input} value={toDate} min={fromDate || undefined}
+              onChange={(e) => updateFilter(setToDate, e.target.value)} /></div>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
+          <h2 className="font-semibold">Registro de actividad</h2>
+          <span className="text-sm text-muted-foreground">{total} {total === 1 ? "evento" : "eventos"}</span>
+        </div>
+        {loading ? <p className="p-8 text-center text-sm text-muted-foreground">Cargando actividad...</p> :
+          records.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No hay eventos para los filtros seleccionados.</p> :
+          <div className="divide-y divide-border">{records.map((record) => (
+            <div key={record.id} className="p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-accent">{activityLabel(record.action)}</span>
+                    <span className="font-semibold">{activityLabel(record.entity)}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{profileName(record.user_id)}</p>
+                  {record.entity_id && <p className="mt-1 break-all text-xs text-muted-foreground">Registro: {record.entity_id}</p>}
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <span className="text-xs text-muted-foreground">{new Intl.DateTimeFormat("es-AR", {
+                    day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit",
+                    timeZone: "America/Argentina/Buenos_Aires",
+                  }).format(new Date(record.at))}</span>
+                  <button type="button" className={btnGhost} aria-expanded={expandedId === record.id}
+                    onClick={() => setExpandedId(expandedId === record.id ? null : record.id)}>
+                    {expandedId === record.id ? "Ocultar detalle" : "Ver detalle"}
+                  </button>
+                </div>
+              </div>
+              {expandedId === record.id && <div className="mt-4 rounded-lg border border-border bg-background/60 p-4">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Detalle del evento #{record.id}</p>
+                <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">{JSON.stringify(record.detail ?? {}, null, 2)}</pre>
+              </div>}
+            </div>
+          ))}</div>}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
+          <span className="text-xs text-muted-foreground">Página {page + 1} de {totalPages}</span>
+          <div className="flex gap-2">
+            <button type="button" className={btnGhost} disabled={loading || page === 0} onClick={() => { setPage((value) => Math.max(0, value - 1)); setExpandedId(null); }}>Anterior</button>
+            <button type="button" className={btnGhost} disabled={loading || page + 1 >= totalPages} onClick={() => { setPage((value) => value + 1); setExpandedId(null); }}>Siguiente</button>
+          </div>
+        </div>
       </div>
     </ModuleHeader>
   );
