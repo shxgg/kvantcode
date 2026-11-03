@@ -1,4 +1,3 @@
-
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   useEffect,
@@ -59,16 +58,40 @@ type PanelClient = {
   updated_at: string;
 };
 
-type PanelTask = {
+type PanelLead = {
   id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  due_date: string | null;
-  assigned_to: string | null;
+  name: string;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+  source: string | null;
+  status: "nuevo" | "contactado" | "propuesta" | "ganado" | "perdido";
+  next_follow_up: string | null;
+  notes: string | null;
+  converted_client_id: string | null;
+  won_by_user_id: string | null;
+  won_by_name: string | null;
+  won_at: string | null;
+  converted_by_user_id: string | null;
+  converted_by_name: string | null;
+  converted_at: string | null;
+  active: boolean;
   created_by: string | null;
-  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type PanelExpense = {
+  id: string;
+  spent_on: string;
+  amount: number;
+  currency: string;
+  category: string;
+  description: string | null;
+  vendor: string | null;
+  client_id: string | null;
+  active: boolean;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -148,34 +171,25 @@ function PanelPage() {
     };
   }, []);
 
-  // Esperar a que se verifiquen la sesión y el estado de recuperación.
   if (loading || !recovery.ready) {
     return <LoadingScreen />;
   }
 
-  // Bloquear el acceso al panel mientras exista una recuperación pendiente.
   if (recovery.pending) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-xl">
           <div className="mb-5 text-4xl">🔐</div>
-
           <h1 className="text-2xl font-semibold">
             Recuperación de contraseña
           </h1>
-
           <p className="mt-3 text-sm text-muted-foreground">
             Para continuar, primero tenés que establecer una nueva
             contraseña desde el enlace de recuperación.
           </p>
-
-          <Link
-            to="/reset-password"
-            className={`${btn} mt-7 w-full`}
-          >
+          <Link to="/reset-password" className={`${btn} mt-7 w-full`}>
             Continuar con la recuperación
           </Link>
-
           <button
             type="button"
             onClick={() => void supabase.auth.signOut()}
@@ -203,7 +217,6 @@ function PanelLogin() {
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     setLoading(true);
     setError("");
 
@@ -231,15 +244,10 @@ function PanelLogin() {
               alt="kvantcode"
               className="mx-auto mb-5 h-14 w-auto"
             />
-
             <p className="mb-2 text-sm font-medium tracking-wide text-accent">
               // PANEL INTERNO
             </p>
-
-            <h1 className="text-2xl font-semibold">
-              Ingreso al sistema
-            </h1>
-
+            <h1 className="text-2xl font-semibold">Ingreso al sistema</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Acceso exclusivo para usuarios autorizados.
             </p>
@@ -250,7 +258,6 @@ function PanelLogin() {
               <label className="mb-2 block text-sm font-medium">
                 Correo electrónico
               </label>
-
               <input
                 type="email"
                 value={email}
@@ -266,7 +273,6 @@ function PanelLogin() {
               <label className="mb-2 block text-sm font-medium">
                 Contraseña
               </label>
-
               <input
                 type="password"
                 value={password}
@@ -323,10 +329,7 @@ function PanelAccess({ userId }: { userId: string }) {
     const checkRole = async () => {
       const { data: isAdmin, error: adminError } = await supabase.rpc(
         "has_role",
-        {
-          _user_id: userId,
-          _role: "admin",
-        },
+        { _user_id: userId, _role: "admin" },
       );
 
       if (adminError) {
@@ -338,16 +341,12 @@ function PanelAccess({ userId }: { userId: string }) {
           setRole("admin");
           setLoading(false);
         }
-
         return;
       }
 
       const { data: isStaff, error: staffError } = await supabase.rpc(
         "has_role",
-        {
-          _user_id: userId,
-          _role: "staff",
-        },
+        { _user_id: userId, _role: "staff" },
       );
 
       if (staffError) {
@@ -367,13 +366,8 @@ function PanelAccess({ userId }: { userId: string }) {
     };
   }, [userId]);
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!role) {
-    return <AccessDenied />;
-  }
+  if (loading) return <LoadingScreen />;
+  if (!role) return <AccessDenied />;
 
   return <PanelShell role={role} userId={userId} />;
 }
@@ -408,15 +402,9 @@ function PanelShell({
       <header className="border-b border-border bg-card/70 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <img
-              src={logoMark}
-              alt="kvantcode"
-              className="h-10 w-auto"
-            />
-
+            <img src={logoMark} alt="kvantcode" className="h-10 w-auto" />
             <div>
               <div className="font-semibold">kvantcode</div>
-
               <div className="text-xs tracking-wide text-accent">
                 // panel interno
               </div>
@@ -427,17 +415,14 @@ function PanelShell({
             <span className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-muted-foreground">
               {role}
             </span>
-
             {role === "admin" && (
               <Link to="/admin" className={btnGhost}>
                 Administración
               </Link>
             )}
-
             <Link to="/" className={btnGhost}>
               Sitio
             </Link>
-
             <button
               type="button"
               onClick={handleSignOut}
@@ -455,7 +440,6 @@ function PanelShell({
           <nav className="space-y-2">
             {menuItems.map((item) => {
               const active = section === item.label;
-
               return (
                 <button
                   key={item.label}
@@ -476,22 +460,14 @@ function PanelShell({
 
         <main className="flex-1 p-6 md:p-8">
           {section === "Dashboard" && <Dashboard role={role} />}
-
           {section === "Tareas" && (
             <TasksModule role={role} userId={userId} />
           )}
-
           {section === "Clientes" && <ClientsModule role={role} />}
-
           {section === "Prospectos" && <LeadsModule role={role} />}
-
           {section === "Gastos" && role === "admin" && (
-            <PlaceholderModule
-              title="Gastos"
-              description="Administración de gastos internos."
-            />
+            <ExpensesModule />
           )}
-
           {section === "Actividad" && role === "admin" && (
             <PlaceholderModule
               title="Actividad"
@@ -541,40 +517,23 @@ function TasksModule({
           .select(
             "id,title,description,status,priority,due_date,assigned_to,created_by,completed_at,created_at,updated_at",
           )
-          .order("completed_at", {
-            ascending: true,
-            nullsFirst: true,
-          })
-          .order("due_date", {
-            ascending: true,
-            nullsFirst: false,
-          })
-          .order("created_at", {
-            ascending: false,
-          }),
+          .order("completed_at", { ascending: true, nullsFirst: true })
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: false }),
 
         supabase
           .from("profiles")
           .select("id,email,full_name")
-          .order("full_name", {
-            ascending: true,
-            nullsFirst: false,
-          }),
+          .order("full_name", { ascending: true, nullsFirst: false }),
       ]);
 
-      if (tasksResult.error) {
-        throw tasksResult.error;
-      }
-
-      if (profilesResult.error) {
-        throw profilesResult.error;
-      }
+      if (tasksResult.error) throw tasksResult.error;
+      if (profilesResult.error) throw profilesResult.error;
 
       setTasks((tasksResult.data ?? []) as PanelTask[]);
       setProfiles((profilesResult.data ?? []) as PanelProfile[]);
     } catch (loadError) {
       console.error("Error cargando tareas:", loadError);
-
       setError(
         "No pudimos cargar las tareas. Revisá la consola para más detalles.",
       );
@@ -593,12 +552,7 @@ function TasksModule({
     setPriority("media");
     setStatus("pendiente");
     setDueDate("");
-
-    if (role === "staff") {
-      setAssignedTo(userId);
-    } else {
-      setAssignedTo("");
-    }
+    setAssignedTo(role === "staff" ? userId : "");
   };
 
   const handleOpenForm = () => {
@@ -608,17 +562,12 @@ function TasksModule({
   };
 
   const handleCancel = () => {
-    if (saving) {
-      return;
-    }
-
+    if (saving) return;
     setShowForm(false);
     resetForm();
   };
 
-  const handleCreateTask = async (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
+  const handleCreateTask = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!title.trim()) {
@@ -633,28 +582,22 @@ function TasksModule({
       const finalAssignedTo =
         role === "staff" ? userId : assignedTo || null;
 
-      const { error: insertError } = await supabase
-        .from("tasks")
-        .insert({
-          title: title.trim(),
-          description: description.trim() || null,
-          status,
-          priority,
-          due_date: dueDate || null,
-          assigned_to: finalAssignedTo,
-        });
+      const { error: insertError } = await supabase.from("tasks").insert({
+        title: title.trim(),
+        description: description.trim() || null,
+        status,
+        priority,
+        due_date: dueDate || null,
+        assigned_to: finalAssignedTo,
+      });
 
-      if (insertError) {
-        throw insertError;
-      }
+      if (insertError) throw insertError;
 
       setShowForm(false);
       resetForm();
-
       await loadTasks();
     } catch (createError) {
       console.error("Error creando tarea:", createError);
-
       setError(
         createError instanceof Error
           ? createError.message
@@ -671,25 +614,18 @@ function TasksModule({
 
     try {
       const isCompleted = task.completed_at !== null;
-
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
           status: isCompleted ? "pendiente" : "completada",
-          completed_at: isCompleted
-            ? null
-            : new Date().toISOString(),
+          completed_at: isCompleted ? null : new Date().toISOString(),
         })
         .eq("id", task.id);
 
-      if (updateError) {
-        throw updateError;
-      }
-
+      if (updateError) throw updateError;
       await loadTasks();
     } catch (completeError) {
       console.error("Error actualizando tarea:", completeError);
-
       setError(
         completeError instanceof Error
           ? completeError.message
@@ -701,17 +637,12 @@ function TasksModule({
   };
 
   const handleDeleteTask = async (task: PanelTask) => {
-    if (role !== "admin") {
-      return;
-    }
+    if (role !== "admin") return;
 
     const confirmed = window.confirm(
       `¿Querés eliminar la tarea "${task.title}"?`,
     );
-
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setError("");
 
@@ -721,14 +652,10 @@ function TasksModule({
         .delete()
         .eq("id", task.id);
 
-      if (deleteError) {
-        throw deleteError;
-      }
-
+      if (deleteError) throw deleteError;
       await loadTasks();
     } catch (deleteError) {
       console.error("Error eliminando tarea:", deleteError);
-
       setError(
         deleteError instanceof Error
           ? deleteError.message
@@ -738,42 +665,26 @@ function TasksModule({
   };
 
   const getProfileName = (profileId: string | null) => {
-    if (!profileId) {
-      return "Sin asignar";
-    }
-
-    const profile = profiles.find(
-      (item) => item.id === profileId,
-    );
-
-    if (!profile) {
-      return "Usuario";
-    }
-
+    if (!profileId) return "Sin asignar";
+    const profile = profiles.find((item) => item.id === profileId);
+    if (!profile) return "Usuario";
     return profile.full_name || profile.email || "Usuario";
   };
 
   const getPriorityLabel = (value: string) => {
     switch (value) {
-      case "urgente":
-        return "Urgente";
-      case "alta":
-        return "Alta";
-      case "baja":
-        return "Baja";
-      default:
-        return "Media";
+      case "urgente": return "Urgente";
+      case "alta": return "Alta";
+      case "baja": return "Baja";
+      default: return "Media";
     }
   };
 
   const getStatusLabel = (value: string) => {
     switch (value) {
-      case "en_progreso":
-        return "En progreso";
-      case "completada":
-        return "Completada";
-      default:
-        return "Pendiente";
+      case "en_progreso": return "En progreso";
+      case "completada": return "Completada";
+      default: return "Pendiente";
     }
   };
 
@@ -804,10 +715,7 @@ function TasksModule({
             <p className="text-sm font-medium tracking-wide text-accent">
               // NUEVA TAREA
             </p>
-
-            <h2 className="mt-1 text-xl font-semibold">
-              Crear tarea
-            </h2>
+            <h2 className="mt-1 text-xl font-semibold">Crear tarea</h2>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
@@ -815,7 +723,6 @@ function TasksModule({
               <label className="mb-2 block text-sm font-medium">
                 Título *
               </label>
-
               <input
                 type="text"
                 value={title}
@@ -831,12 +738,9 @@ function TasksModule({
               <label className="mb-2 block text-sm font-medium">
                 Descripción
               </label>
-
               <textarea
                 value={description}
-                onChange={(event) =>
-                  setDescription(event.target.value)
-                }
+                onChange={(event) => setDescription(event.target.value)}
                 className={`${input} min-h-28 resize-y`}
                 placeholder="Detalles de la tarea..."
               />
@@ -846,25 +750,16 @@ function TasksModule({
               <label className="mb-2 block text-sm font-medium">
                 Responsable
               </label>
-
               {role === "admin" ? (
                 <select
                   value={assignedTo}
-                  onChange={(event) =>
-                    setAssignedTo(event.target.value)
-                  }
+                  onChange={(event) => setAssignedTo(event.target.value)}
                   className={input}
                 >
                   <option value="">Sin asignar</option>
-
                   {profiles.map((profile) => (
-                    <option
-                      key={profile.id}
-                      value={profile.id}
-                    >
-                      {profile.full_name ||
-                        profile.email ||
-                        "Usuario"}
+                    <option key={profile.id} value={profile.id}>
+                      {profile.full_name || profile.email || "Usuario"}
                     </option>
                   ))}
                 </select>
@@ -879,12 +774,9 @@ function TasksModule({
               <label className="mb-2 block text-sm font-medium">
                 Prioridad
               </label>
-
               <select
                 value={priority}
-                onChange={(event) =>
-                  setPriority(event.target.value)
-                }
+                onChange={(event) => setPriority(event.target.value)}
                 className={input}
               >
                 <option value="baja">Baja</option>
@@ -898,12 +790,9 @@ function TasksModule({
               <label className="mb-2 block text-sm font-medium">
                 Estado
               </label>
-
               <select
                 value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value)
-                }
+                onChange={(event) => setStatus(event.target.value)}
                 className={input}
               >
                 <option value="pendiente">Pendiente</option>
@@ -915,13 +804,10 @@ function TasksModule({
               <label className="mb-2 block text-sm font-medium">
                 Fecha límite
               </label>
-
               <input
                 type="date"
                 value={dueDate}
-                onChange={(event) =>
-                  setDueDate(event.target.value)
-                }
+                onChange={(event) => setDueDate(event.target.value)}
                 className={input}
               />
             </div>
@@ -936,12 +822,7 @@ function TasksModule({
             >
               Cancelar
             </button>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className={btn}
-            >
+            <button type="submit" disabled={saving} className={btn}>
               {saving ? "Guardando..." : "Guardar tarea"}
             </button>
           </div>
@@ -951,17 +832,11 @@ function TasksModule({
       <div className="rounded-xl border border-border bg-card">
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="font-semibold">
-              Lista de tareas
-            </h2>
-
+            <h2 className="font-semibold">Lista de tareas</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {tasks.length === 1
-                ? "1 tarea"
-                : `${tasks.length} tareas`}
+              {tasks.length === 1 ? "1 tarea" : `${tasks.length} tareas`}
             </p>
           </div>
-
           <button
             type="button"
             onClick={loadTasks}
@@ -979,15 +854,10 @@ function TasksModule({
         ) : tasks.length === 0 ? (
           <div className="p-10 text-center">
             <div className="mb-3 text-3xl">✓</div>
-
-            <h3 className="font-semibold">
-              No hay tareas todavía
-            </h3>
-
+            <h3 className="font-semibold">No hay tareas todavía</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               Creá la primera tarea para comenzar a organizar el trabajo.
             </p>
-
             <button
               type="button"
               onClick={handleOpenForm}
@@ -1000,14 +870,11 @@ function TasksModule({
           <div className="divide-y divide-border">
             {tasks.map((task) => {
               const completed = task.completed_at !== null;
-
               return (
                 <div
                   key={task.id}
                   className={`p-5 transition ${
-                    completed
-                      ? "opacity-60"
-                      : "hover:bg-background/30"
+                    completed ? "opacity-60" : "hover:bg-background/30"
                   }`}
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -1020,7 +887,6 @@ function TasksModule({
                         >
                           {task.title}
                         </h3>
-
                         <span
                           className={`rounded-full border px-2.5 py-1 text-xs ${
                             completed
@@ -1030,7 +896,6 @@ function TasksModule({
                         >
                           {getStatusLabel(task.status)}
                         </span>
-
                         <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">
                           {getPriorityLabel(task.priority)}
                         </span>
@@ -1043,10 +908,7 @@ function TasksModule({
                       )}
 
                       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-                        <span>
-                          👤 {getProfileName(task.assigned_to)}
-                        </span>
-
+                        <span>👤 {getProfileName(task.assigned_to)}</span>
                         <span>
                           📅{" "}
                           {task.due_date
@@ -1069,7 +931,6 @@ function TasksModule({
                             ? "Reabrir"
                             : "Completar"}
                       </button>
-
                       {role === "admin" && (
                         <button
                           type="button"
@@ -1092,6 +953,318 @@ function TasksModule({
 }
 
 /* =========================================================
+   MÓDULO GASTOS
+   ========================================================= */
+
+function ExpensesModule() {
+  const [expenses, setExpenses] = useState<PanelExpense[]>([]);
+  const [clients, setClients] = useState<Pick<PanelClient, "id" | "name">[]>([]);
+  const [profiles, setProfiles] = useState<PanelProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<PanelExpense | null>(null);
+  const [search, setSearch] = useState("");
+  const [currencyFilter, setCurrencyFilter] = useState("todas");
+  const [categoryFilter, setCategoryFilter] = useState("todas");
+  const [statusFilter, setStatusFilter] = useState("todos");
+
+  const today = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const [spentOn, setSpentOn] = useState(today);
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("ARS");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [vendor, setVendor] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [active, setActive] = useState(true);
+
+  const loadExpenses = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [expensesResult, clientsResult, profilesResult] = await Promise.all([
+        supabase.from("expenses")
+          .select("id,spent_on,amount,currency,category,description,vendor,client_id,active,created_by,created_at,updated_at")
+          .order("spent_on", { ascending: false })
+          .order("created_at", { ascending: false }),
+        supabase.from("clients").select("id,name").order("name", { ascending: true }),
+        supabase.from("profiles").select("id,email,full_name").order("full_name", { ascending: true }),
+      ]);
+      if (expensesResult.error) throw expensesResult.error;
+      if (clientsResult.error) throw clientsResult.error;
+      if (profilesResult.error) throw profilesResult.error;
+      setExpenses((expensesResult.data ?? []) as PanelExpense[]);
+      setClients((clientsResult.data ?? []) as Pick<PanelClient, "id" | "name">[]);
+      setProfiles((profilesResult.data ?? []) as PanelProfile[]);
+    } catch (loadError) {
+      console.error("Error cargando gastos:", loadError);
+      setError(loadError instanceof Error ? loadError.message : "No pudimos cargar los gastos.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadExpenses();
+  }, []);
+
+  const resetForm = () => {
+    setEditingExpense(null);
+    setSpentOn(today());
+    setAmount("");
+    setCurrency("ARS");
+    setCategory("");
+    setDescription("");
+    setVendor("");
+    setClientId("");
+    setActive(true);
+  };
+
+  const openNew = () => {
+    setError("");
+    resetForm();
+    setShowForm(true);
+  };
+
+  const openEdit = (expense: PanelExpense) => {
+    setError("");
+    setEditingExpense(expense);
+    setSpentOn(expense.spent_on);
+    setAmount(String(expense.amount));
+    setCurrency(expense.currency);
+    setCategory(expense.category);
+    setDescription(expense.description ?? "");
+    setVendor(expense.vendor ?? "");
+    setClientId(expense.client_id ?? "");
+    setActive(expense.active);
+    setShowForm(true);
+  };
+
+  const saveExpense = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const numericAmount = Number(amount);
+    if (!spentOn || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+      setError("Ingresá una fecha y un importe mayor a cero.");
+      return;
+    }
+    if (!currency.trim() || !category.trim()) {
+      setError("La moneda y la categoría son obligatorias.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        spent_on: spentOn,
+        amount: numericAmount,
+        currency: currency.trim().toUpperCase(),
+        category: category.trim(),
+        description: description.trim() || null,
+        vendor: vendor.trim() || null,
+        client_id: clientId || null,
+        active,
+      };
+      if (editingExpense) {
+        const { error: updateError } = await supabase.from("expenses")
+          .update(payload).eq("id", editingExpense.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase.from("expenses").insert(payload);
+        if (insertError) throw insertError;
+      }
+      setShowForm(false);
+      resetForm();
+      await loadExpenses();
+    } catch (saveError) {
+      console.error("Error guardando gasto:", saveError);
+      setError(saveError instanceof Error ? saveError.message : "No pudimos guardar el gasto.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (expense: PanelExpense) => {
+    setProcessingId(expense.id);
+    setError("");
+    try {
+      const { error: updateError } = await supabase.from("expenses")
+        .update({ active: !expense.active }).eq("id", expense.id);
+      if (updateError) throw updateError;
+      await loadExpenses();
+    } catch (toggleError) {
+      console.error("Error actualizando gasto:", toggleError);
+      setError(toggleError instanceof Error ? toggleError.message : "No pudimos actualizar el gasto.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const deleteExpense = async (expense: PanelExpense) => {
+    if (!window.confirm(`¿Querés eliminar el gasto de ${expense.currency} ${formatAmount(Number(expense.amount), expense.currency)}? Esta acción no se puede deshacer.`)) return;
+    setProcessingId(expense.id);
+    setError("");
+    try {
+      const { error: deleteError } = await supabase.from("expenses")
+        .delete().eq("id", expense.id);
+      if (deleteError) throw deleteError;
+      await loadExpenses();
+    } catch (deleteError) {
+      console.error("Error eliminando gasto:", deleteError);
+      setError(deleteError instanceof Error ? deleteError.message : "No pudimos eliminar el gasto.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const clientName = (id: string | null) =>
+    id ? clients.find((client) => client.id === id)?.name ?? "Cliente no disponible" : "Sin cliente";
+  const creatorName = (id: string | null) => {
+    if (!id) return "Sin usuario";
+    const profile = profiles.find((item) => item.id === id);
+    return profile?.full_name || profile?.email || "Usuario no disponible";
+  };
+
+  const currencies = [...new Set(expenses.map((expense) => expense.currency))].sort();
+  const categories = [...new Set(expenses.map((expense) => expense.category))].sort();
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredExpenses = expenses.filter((expense) => {
+    if (currencyFilter !== "todas" && expense.currency !== currencyFilter) return false;
+    if (categoryFilter !== "todas" && expense.category !== categoryFilter) return false;
+    if (statusFilter === "activos" && !expense.active) return false;
+    if (statusFilter === "inactivos" && expense.active) return false;
+    return !normalizedSearch || [
+      expense.category, expense.description, expense.vendor,
+      clientName(expense.client_id), creatorName(expense.created_by),
+    ].some((value) => (value ?? "").toLowerCase().includes(normalizedSearch));
+  });
+  const activeCount = expenses.filter((expense) => expense.active).length;
+  const totals = expenses.filter((expense) => expense.active).reduce<Record<string, number>>((acc, expense) => {
+    acc[expense.currency] = (acc[expense.currency] ?? 0) + Number(expense.amount);
+    return acc;
+  }, {});
+
+  return (
+    <ModuleHeader eyebrow="// GASTOS" title="Gastos"
+      description="Registro y administración de gastos internos."
+      actionLabel="Nuevo gasto" onAction={openNew}>
+      {error && (
+        <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+      )}
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Gastos registrados</p>
+          <p className="mt-2 text-2xl font-semibold">{expenses.length}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Activos / inactivos</p>
+          <p className="mt-2 text-2xl font-semibold">{activeCount} / {expenses.length - activeCount}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Total activo por moneda</p>
+          {Object.entries(totals).length === 0 ? <p className="mt-2 text-sm">Sin gastos activos</p> :
+            Object.entries(totals).sort(([a], [b]) => a.localeCompare(b)).map(([code, total]) => (
+              <p key={code} className="mt-1 font-semibold">{code} {formatAmount(total, code)}</p>
+            ))}
+        </div>
+      </div>
+
+      {showForm && (
+        <form onSubmit={saveExpense} className="mb-6 rounded-xl border border-border bg-card p-6">
+          <p className="text-sm font-medium tracking-wide text-accent">{editingExpense ? "// EDITAR GASTO" : "// NUEVO GASTO"}</p>
+          <h2 className="mb-6 mt-1 text-xl font-semibold">{editingExpense ? "Editar gasto" : "Registrar gasto"}</h2>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div><label className="mb-2 block text-sm font-medium">Fecha *</label>
+              <input type="date" value={spentOn} onChange={(e) => setSpentOn(e.target.value)} className={input} required /></div>
+            <div><label className="mb-2 block text-sm font-medium">Importe *</label>
+              <input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={input} required /></div>
+            <div><label className="mb-2 block text-sm font-medium">Moneda *</label>
+              <input type="text" maxLength={10} value={currency} onChange={(e) => setCurrency(e.target.value)} className={input} placeholder="ARS, USD..." required /></div>
+            <div><label className="mb-2 block text-sm font-medium">Categoría *</label>
+              <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} className={input} placeholder="Ej.: Servicios" required /></div>
+            <div><label className="mb-2 block text-sm font-medium">Proveedor</label>
+              <input type="text" value={vendor} onChange={(e) => setVendor(e.target.value)} className={input} /></div>
+            <div><label className="mb-2 block text-sm font-medium">Cliente relacionado</label>
+              <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={input}>
+                <option value="">Sin cliente</option>
+                {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+              </select></div>
+            <div><label className="mb-2 block text-sm font-medium">Estado</label>
+              <select value={active ? "activo" : "inactivo"} onChange={(e) => setActive(e.target.value === "activo")} className={input}>
+                <option value="activo">Activo</option><option value="inactivo">Inactivo</option>
+              </select></div>
+            <div className="md:col-span-2"><label className="mb-2 block text-sm font-medium">Descripción</label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} className={`${input} min-h-24 resize-y`} /></div>
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <button type="button" onClick={() => { setShowForm(false); resetForm(); }} disabled={saving} className={btnGhost}>Cancelar</button>
+            <button type="submit" disabled={saving} className={btn}>{saving ? "Guardando..." : editingExpense ? "Guardar cambios" : "Guardar gasto"}</button>
+          </div>
+        </form>
+      )}
+
+      <div className="rounded-xl border border-border bg-card">
+        <div className="border-b border-border p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="font-semibold">Lista de gastos</h2><p className="mt-1 text-xs text-muted-foreground">{filteredExpenses.length} mostrados</p></div>
+            <button type="button" onClick={() => void loadExpenses()} disabled={loading} className={btnGhost}>{loading ? "Actualizando..." : "Actualizar"}</button>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} className={input} placeholder="Buscar gastos..." />
+            <select value={currencyFilter} onChange={(e) => setCurrencyFilter(e.target.value)} className={input}>
+              <option value="todas">Todas las monedas</option>{currencies.map((code) => <option key={code} value={code}>{code}</option>)}
+            </select>
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className={input}>
+              <option value="todas">Todas las categorías</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={input}>
+              <option value="todos">Todos los estados</option><option value="activos">Activos</option><option value="inactivos">Inactivos</option>
+            </select>
+          </div>
+        </div>
+        {loading ? <p className="p-8 text-center text-sm text-muted-foreground">Cargando gastos...</p> :
+          filteredExpenses.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No hay gastos para mostrar.</p> :
+          <div className="divide-y divide-border">{filteredExpenses.map((expense) => (
+            <div key={expense.id} className={`p-5 ${expense.active ? "" : "opacity-60"}`}>
+              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold">{expense.category}</h3>
+                    <span className="rounded-full border border-border px-2 py-1 text-xs text-muted-foreground">{expense.active ? "Activo" : "Inactivo"}</span>
+                    <span className="font-semibold text-accent">{expense.currency} {formatAmount(Number(expense.amount), expense.currency)}</span>
+                  </div>
+                  {expense.description && <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{expense.description}</p>}
+                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+                    <span>📅 {formatDate(expense.spent_on)}</span>
+                    <span>Proveedor: {expense.vendor || "Sin proveedor"}</span>
+                    <span>Cliente: {clientName(expense.client_id)}</span>
+                    <span>Registrado por: {creatorName(expense.created_by)}</span>
+                    <span>Alta: {formatDateTime(expense.created_at)}</span>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button type="button" onClick={() => void toggleActive(expense)} disabled={processingId === expense.id} className={btnGhost}>{expense.active ? "Desactivar" : "Activar"}</button>
+                  <button type="button" onClick={() => openEdit(expense)} disabled={processingId === expense.id} className={btnGhost}>Editar</button>
+                  <button type="button" onClick={() => void deleteExpense(expense)} disabled={processingId === expense.id} className="rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50">Eliminar</button>
+                </div>
+              </div>
+            </div>
+          ))}</div>}
+      </div>
+    </ModuleHeader>
+  );
+}
+
+/* =========================================================
    MÓDULO CLIENTES
    ========================================================= */
 
@@ -1102,8 +1275,7 @@ function ClientsModule({ role }: { role: PanelRole }) {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [editingClient, setEditingClient] =
-    useState<PanelClient | null>(null);
+  const [editingClient, setEditingClient] = useState<PanelClient | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "todos" | "activos" | "inactivos"
@@ -1126,21 +1298,13 @@ function ClientsModule({ role }: { role: PanelRole }) {
         .select(
           "id,name,company,email,phone,notes,active,created_by,created_at,updated_at",
         )
-        .order("active", {
-          ascending: false,
-        })
-        .order("name", {
-          ascending: true,
-        });
+        .order("active", { ascending: false })
+        .order("name", { ascending: true });
 
-      if (loadError) {
-        throw loadError;
-      }
-
+      if (loadError) throw loadError;
       setClients((data ?? []) as PanelClient[]);
     } catch (loadError) {
       console.error("Error cargando clientes:", loadError);
-
       setError(
         loadError instanceof Error
           ? loadError.message
@@ -1166,14 +1330,15 @@ function ClientsModule({ role }: { role: PanelRole }) {
   };
 
   const handleOpenNew = () => {
+    if (role !== "admin") return;
     setError("");
     resetForm();
     setShowForm(true);
   };
 
   const handleOpenEdit = (client: PanelClient) => {
+    if (role !== "admin") return;
     setError("");
-
     setEditingClient(client);
     setName(client.name);
     setCompany(client.company ?? "");
@@ -1181,26 +1346,20 @@ function ClientsModule({ role }: { role: PanelRole }) {
     setPhone(client.phone ?? "");
     setNotes(client.notes ?? "");
     setActive(client.active);
-
     setShowForm(true);
   };
 
   const handleCancel = () => {
-    if (saving) {
-      return;
-    }
-
+    if (saving) return;
     setShowForm(false);
     resetForm();
   };
 
-  const handleSaveClient = async (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
+  const handleSaveClient = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (role !== "admin") return;
 
     const cleanName = name.trim();
-
     if (!cleanName) {
       setError("El nombre del cliente es obligatorio.");
       return;
@@ -1224,27 +1383,19 @@ function ClientsModule({ role }: { role: PanelRole }) {
           .from("clients")
           .update(payload)
           .eq("id", editingClient.id);
-
-        if (updateError) {
-          throw updateError;
-        }
+        if (updateError) throw updateError;
       } else {
         const { error: insertError } = await supabase
           .from("clients")
           .insert(payload);
-
-        if (insertError) {
-          throw insertError;
-        }
+        if (insertError) throw insertError;
       }
 
       setShowForm(false);
       resetForm();
-
       await loadClients();
     } catch (saveError) {
       console.error("Error guardando cliente:", saveError);
-
       setError(
         saveError instanceof Error
           ? saveError.message
@@ -1256,28 +1407,19 @@ function ClientsModule({ role }: { role: PanelRole }) {
   };
 
   const handleToggleActive = async (client: PanelClient) => {
+    if (role !== "admin") return;
     setProcessingId(client.id);
     setError("");
 
     try {
       const { error: updateError } = await supabase
         .from("clients")
-        .update({
-          active: !client.active,
-        })
+        .update({ active: !client.active })
         .eq("id", client.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
+      if (updateError) throw updateError;
       await loadClients();
     } catch (toggleError) {
-      console.error(
-        "Error cambiando estado del cliente:",
-        toggleError,
-      );
-
+      console.error("Error cambiando estado del cliente:", toggleError);
       setError(
         toggleError instanceof Error
           ? toggleError.message
@@ -1289,17 +1431,12 @@ function ClientsModule({ role }: { role: PanelRole }) {
   };
 
   const handleDeleteClient = async (client: PanelClient) => {
-    if (role !== "admin") {
-      return;
-    }
+    if (role !== "admin") return;
 
     const confirmed = window.confirm(
       `¿Querés eliminar el cliente "${client.name}"? Esta acción no se puede deshacer.`,
     );
-
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setProcessingId(client.id);
     setError("");
@@ -1309,15 +1446,10 @@ function ClientsModule({ role }: { role: PanelRole }) {
         .from("clients")
         .delete()
         .eq("id", client.id);
-
-      if (deleteError) {
-        throw deleteError;
-      }
-
+      if (deleteError) throw deleteError;
       await loadClients();
     } catch (deleteError) {
       console.error("Error eliminando cliente:", deleteError);
-
       setError(
         deleteError instanceof Error
           ? deleteError.message
@@ -1329,25 +1461,10 @@ function ClientsModule({ role }: { role: PanelRole }) {
   };
 
   const normalizedSearch = search.trim().toLowerCase();
-
   const filteredClients = clients.filter((client) => {
-    if (
-      statusFilter === "activos" &&
-      !client.active
-    ) {
-      return false;
-    }
-
-    if (
-      statusFilter === "inactivos" &&
-      client.active
-    ) {
-      return false;
-    }
-
-    if (!normalizedSearch) {
-      return true;
-    }
+    if (statusFilter === "activos" && !client.active) return false;
+    if (statusFilter === "inactivos" && client.active) return false;
+    if (!normalizedSearch) return true;
 
     return [
       client.name,
@@ -1357,17 +1474,10 @@ function ClientsModule({ role }: { role: PanelRole }) {
       client.notes,
     ]
       .filter(Boolean)
-      .some((value) =>
-        String(value)
-          .toLowerCase()
-          .includes(normalizedSearch),
-      );
+      .some((value) => String(value).toLowerCase().includes(normalizedSearch));
   });
 
-  const activeCount = clients.filter(
-    (client) => client.active,
-  ).length;
-
+  const activeCount = clients.filter((client) => client.active).length;
   const inactiveCount = clients.length - activeCount;
 
   return (
@@ -1377,9 +1487,9 @@ function ClientsModule({ role }: { role: PanelRole }) {
       description={
         role === "admin"
           ? "Administración y seguimiento de clientes."
-          : "Consulta y gestión de clientes."
+          : "Consulta de clientes."
       }
-      actionLabel="Nuevo cliente"
+      actionLabel={role === "admin" ? "Nuevo cliente" : undefined}
       onAction={handleOpenNew}
     >
       {error && (
@@ -1390,64 +1500,41 @@ function ClientsModule({ role }: { role: PanelRole }) {
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm text-muted-foreground">
-            Total
-          </p>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {clients.length}
-          </p>
-
+          <p className="text-sm text-muted-foreground">Total</p>
+          <p className="mt-2 text-2xl font-semibold">{clients.length}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Clientes registrados
           </p>
         </div>
-
         <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm text-muted-foreground">
-            Activos
-          </p>
-
+          <p className="text-sm text-muted-foreground">Activos</p>
           <p className="mt-2 text-2xl font-semibold text-green-400">
             {activeCount}
           </p>
-
           <p className="mt-1 text-xs text-muted-foreground">
             Clientes activos
           </p>
         </div>
-
         <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm text-muted-foreground">
-            Inactivos
-          </p>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {inactiveCount}
-          </p>
-
+          <p className="text-sm text-muted-foreground">Inactivos</p>
+          <p className="mt-2 text-2xl font-semibold">{inactiveCount}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Clientes desactivados
           </p>
         </div>
       </div>
 
-      {showForm && (
+      {showForm && role === "admin" && (
         <form
           onSubmit={handleSaveClient}
           className="mb-6 rounded-xl border border-border bg-card p-6"
         >
           <div className="mb-6">
             <p className="text-sm font-medium tracking-wide text-accent">
-              {editingClient
-                ? "// EDITAR CLIENTE"
-                : "// NUEVO CLIENTE"}
+              {editingClient ? "// EDITAR CLIENTE" : "// NUEVO CLIENTE"}
             </p>
-
             <h2 className="mt-1 text-xl font-semibold">
-              {editingClient
-                ? "Editar cliente"
-                : "Crear cliente"}
+              {editingClient ? "Editar cliente" : "Crear cliente"}
             </h2>
           </div>
 
@@ -1456,79 +1543,58 @@ function ClientsModule({ role }: { role: PanelRole }) {
               <label className="mb-2 block text-sm font-medium">
                 Nombre *
               </label>
-
               <input
                 type="text"
                 value={name}
-                onChange={(event) =>
-                  setName(event.target.value)
-                }
+                onChange={(event) => setName(event.target.value)}
                 className={input}
                 placeholder="Nombre del cliente"
                 required
                 autoFocus
               />
             </div>
-
             <div>
               <label className="mb-2 block text-sm font-medium">
                 Empresa
               </label>
-
               <input
                 type="text"
                 value={company}
-                onChange={(event) =>
-                  setCompany(event.target.value)
-                }
+                onChange={(event) => setCompany(event.target.value)}
                 className={input}
                 placeholder="Empresa o razón social"
               />
             </div>
-
             <div>
-              <label className="mb-2 block text-sm font-medium">
-                Email
-              </label>
-
+              <label className="mb-2 block text-sm font-medium">Email</label>
               <input
                 type="email"
                 value={email}
-                onChange={(event) =>
-                  setEmail(event.target.value)
-                }
+                onChange={(event) => setEmail(event.target.value)}
                 className={input}
                 placeholder="cliente@empresa.com"
               />
             </div>
-
             <div>
               <label className="mb-2 block text-sm font-medium">
                 Teléfono
               </label>
-
               <input
                 type="tel"
                 value={phone}
-                onChange={(event) =>
-                  setPhone(event.target.value)
-                }
+                onChange={(event) => setPhone(event.target.value)}
                 className={input}
                 placeholder="+54 11 ..."
               />
             </div>
-
             <div>
               <label className="mb-2 block text-sm font-medium">
                 Estado
               </label>
-
               <select
                 value={active ? "activo" : "inactivo"}
                 onChange={(event) =>
-                  setActive(
-                    event.target.value === "activo",
-                  )
+                  setActive(event.target.value === "activo")
                 }
                 className={input}
               >
@@ -1536,17 +1602,13 @@ function ClientsModule({ role }: { role: PanelRole }) {
                 <option value="inactivo">Inactivo</option>
               </select>
             </div>
-
             <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-medium">
                 Notas
               </label>
-
               <textarea
                 value={notes}
-                onChange={(event) =>
-                  setNotes(event.target.value)
-                }
+                onChange={(event) => setNotes(event.target.value)}
                 className={`${input} min-h-28 resize-y`}
                 placeholder="Información adicional del cliente..."
               />
@@ -1562,12 +1624,7 @@ function ClientsModule({ role }: { role: PanelRole }) {
             >
               Cancelar
             </button>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className={btn}
-            >
+            <button type="submit" disabled={saving} className={btn}>
               {saving
                 ? "Guardando..."
                 : editingClient
@@ -1582,26 +1639,20 @@ function ClientsModule({ role }: { role: PanelRole }) {
         <div className="border-b border-border px-5 py-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="font-semibold">
-                Lista de clientes
-              </h2>
-
+              <h2 className="font-semibold">Lista de clientes</h2>
               <p className="mt-1 text-xs text-muted-foreground">
                 {filteredClients.length === 1
                   ? "1 cliente mostrado"
                   : `${filteredClients.length} clientes mostrados`}
               </p>
             </div>
-
             <button
               type="button"
               onClick={loadClients}
               disabled={loading}
               className={btnGhost}
             >
-              {loading
-                ? "Actualizando..."
-                : "Actualizar"}
+              {loading ? "Actualizando..." : "Actualizar"}
             </button>
           </div>
 
@@ -1609,36 +1660,22 @@ function ClientsModule({ role }: { role: PanelRole }) {
             <input
               type="search"
               value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
+              onChange={(event) => setSearch(event.target.value)}
               className={input}
               placeholder="Buscar por nombre, empresa, email, teléfono o notas..."
             />
-
             <select
               value={statusFilter}
               onChange={(event) =>
                 setStatusFilter(
-                  event.target.value as
-                    | "todos"
-                    | "activos"
-                    | "inactivos",
+                  event.target.value as "todos" | "activos" | "inactivos",
                 )
               }
               className={`${input} md:w-44`}
             >
-              <option value="todos">
-                Todos
-              </option>
-
-              <option value="activos">
-                Activos
-              </option>
-
-              <option value="inactivos">
-                Inactivos
-              </option>
+              <option value="todos">Todos</option>
+              <option value="activos">Activos</option>
+              <option value="inactivos">Inactivos</option>
             </select>
           </div>
         </div>
@@ -1649,23 +1686,18 @@ function ClientsModule({ role }: { role: PanelRole }) {
           </div>
         ) : filteredClients.length === 0 ? (
           <div className="p-10 text-center">
-            <div className="mb-3 text-3xl">
-              👥
-            </div>
-
+            <div className="mb-3 text-3xl">👥</div>
             <h3 className="font-semibold">
               {clients.length === 0
                 ? "No hay clientes todavía"
                 : "No encontramos clientes"}
             </h3>
-
             <p className="mt-2 text-sm text-muted-foreground">
               {clients.length === 0
                 ? "Creá el primer cliente para comenzar."
                 : "Probá con otro término de búsqueda o cambiá el filtro de estado."}
             </p>
-
-            {clients.length === 0 && (
+            {clients.length === 0 && role === "admin" && (
               <button
                 type="button"
                 onClick={handleOpenNew}
@@ -1681,18 +1713,13 @@ function ClientsModule({ role }: { role: PanelRole }) {
               <div
                 key={client.id}
                 className={`p-5 transition ${
-                  client.active
-                    ? "hover:bg-background/30"
-                    : "opacity-60"
+                  client.active ? "hover:bg-background/30" : "opacity-60"
                 }`}
               >
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold">
-                        {client.name}
-                      </h3>
-
+                      <h3 className="font-semibold">{client.name}</h3>
                       <span
                         className={`rounded-full border px-2.5 py-1 text-xs ${
                           client.active
@@ -1700,9 +1727,7 @@ function ClientsModule({ role }: { role: PanelRole }) {
                             : "border-border text-muted-foreground"
                         }`}
                       >
-                        {client.active
-                          ? "Activo"
-                          : "Inactivo"}
+                        {client.active ? "Activo" : "Inactivo"}
                       </span>
                     </div>
 
@@ -1714,31 +1739,15 @@ function ClientsModule({ role }: { role: PanelRole }) {
 
                     <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                       {client.email && (
-                        <span className="truncate">
-                          ✉️ {client.email}
-                        </span>
+                        <span className="truncate">✉️ {client.email}</span>
                       )}
-
-                      {client.phone && (
-                        <span>
-                          📞 {client.phone}
-                        </span>
-                      )}
-
+                      {client.phone && <span>📞 {client.phone}</span>}
                       <span>
-                        📅 Alta:{" "}
-                        {formatDateTime(
-                          client.created_at,
-                        )}
+                        📅 Alta: {formatDateTime(client.created_at)}
                       </span>
-
-                      {client.updated_at !==
-                        client.created_at && (
+                      {client.updated_at !== client.created_at && (
                         <span>
-                          🔄 Actualizado:{" "}
-                          {formatDateTime(
-                            client.updated_at,
-                          )}
+                          🔄 Actualizado: {formatDateTime(client.updated_at)}
                         </span>
                       )}
                     </div>
@@ -1752,52 +1761,38 @@ function ClientsModule({ role }: { role: PanelRole }) {
                     )}
                   </div>
 
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleToggleActive(client)
-                      }
-                      disabled={
-                        processingId === client.id
-                      }
-                      className={btnGhost}
-                    >
-                      {processingId === client.id
-                        ? "Actualizando..."
-                        : client.active
-                          ? "Desactivar"
-                          : "Activar"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleOpenEdit(client)
-                      }
-                      disabled={
-                        processingId === client.id
-                      }
-                      className={btnGhost}
-                    >
-                      Editar
-                    </button>
-
-                    {role === "admin" && (
+                  {role === "admin" && (
+                    <div className="flex shrink-0 flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          handleDeleteClient(client)
-                        }
-                        disabled={
-                          processingId === client.id
-                        }
+                        onClick={() => handleToggleActive(client)}
+                        disabled={processingId === client.id}
+                        className={btnGhost}
+                      >
+                        {processingId === client.id
+                          ? "Actualizando..."
+                          : client.active
+                            ? "Desactivar"
+                            : "Activar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(client)}
+                        disabled={processingId === client.id}
+                        className={btnGhost}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteClient(client)}
+                        disabled={processingId === client.id}
                         className="rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
                       >
                         Eliminar
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -1813,30 +1808,966 @@ function ClientsModule({ role }: { role: PanelRole }) {
    ========================================================= */
 
 function LeadsModule({ role }: { role: PanelRole }) {
+  const [leads, setLeads] = useState<PanelLead[]>([]);
+  const [profiles, setProfiles] = useState<PanelProfile[]>([]);
+  const [clients, setClients] = useState<
+    Pick<PanelClient, "id" | "name">[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editingLead, setEditingLead] = useState<PanelLead | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("todos");
+  const [activeFilter, setActiveFilter] = useState<
+    "todos" | "activos" | "inactivos"
+  >("activos");
+
+  const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [source, setSource] = useState("");
+  const [status, setStatus] = useState<PanelLead["status"]>("nuevo");
+  const [nextFollowUp, setNextFollowUp] = useState("");
+  const [notes, setNotes] = useState("");
+  const [active, setActive] = useState(true);
+  const [wonByUserId, setWonByUserId] = useState("");
+
+  const loadLeads = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [leadsResult, profilesResult, clientsResult] = await Promise.all([
+        supabase
+          .from("leads")
+          .select(
+            "id,name,company,email,phone,source,status,next_follow_up,notes,converted_client_id,won_by_user_id,won_by_name,won_at,converted_by_user_id,converted_by_name,converted_at,active,created_by,created_at,updated_at",
+          )
+          .order("active", { ascending: false })
+          .order("next_follow_up", {
+            ascending: true,
+            nullsFirst: false,
+          })
+          .order("created_at", { ascending: false }),
+
+        supabase
+          .from("profiles")
+          .select("id,email,full_name")
+          .order("full_name", { ascending: true, nullsFirst: false }),
+
+        supabase
+          .from("clients")
+          .select("id,name")
+          .order("name", { ascending: true }),
+      ]);
+
+      if (leadsResult.error) throw leadsResult.error;
+      if (profilesResult.error) throw profilesResult.error;
+      if (clientsResult.error) throw clientsResult.error;
+
+      setLeads((leadsResult.data ?? []) as PanelLead[]);
+      setProfiles((profilesResult.data ?? []) as PanelProfile[]);
+      setClients(
+        (clientsResult.data ?? []) as Pick<PanelClient, "id" | "name">[],
+      );
+    } catch (loadError) {
+      console.error("Error cargando prospectos:", loadError);
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "No pudimos cargar los prospectos.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLeads();
+  }, []);
+
+  const getProfileNameById = (profileId: string | null) => {
+    if (!profileId) return null;
+    const profile = profiles.find((item) => item.id === profileId);
+    if (!profile) return null;
+    return profile.full_name || profile.email || null;
+  };
+
+  const resetForm = () => {
+    setName("");
+    setCompany("");
+    setEmail("");
+    setPhone("");
+    setSource("");
+    setStatus("nuevo");
+    setNextFollowUp("");
+    setNotes("");
+    setActive(true);
+    setWonByUserId("");
+    setEditingLead(null);
+  };
+
+  const handleOpenNew = () => {
+    if (role !== "admin") return;
+    setError("");
+    setSuccess("");
+    resetForm();
+    setShowForm(true);
+  };
+
+  const handleOpenEdit = (lead: PanelLead) => {
+    if (role !== "admin") return;
+    setError("");
+    setSuccess("");
+    setEditingLead(lead);
+    setName(lead.name);
+    setCompany(lead.company ?? "");
+    setEmail(lead.email ?? "");
+    setPhone(lead.phone ?? "");
+    setSource(lead.source ?? "");
+    setStatus(lead.status);
+    setNextFollowUp(lead.next_follow_up ?? "");
+    setNotes(lead.notes ?? "");
+    setActive(lead.active);
+    setWonByUserId(lead.won_by_user_id ?? "");
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    if (saving) return;
+    setShowForm(false);
+    resetForm();
+  };
+
+  const handleSaveLead = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (role !== "admin") return;
+
+    const cleanName = name.trim();
+    if (!cleanName) {
+      setError("El nombre del prospecto es obligatorio.");
+      return;
+    }
+
+    if (status === "ganado" && !wonByUserId) {
+      setError(
+        "Para marcar un prospecto como Ganado, seleccioná el vendedor responsable.",
+      );
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const payload = {
+        name: cleanName,
+        company: company.trim() || null,
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+        source: source.trim() || null,
+        status,
+        next_follow_up: nextFollowUp || null,
+        notes: notes.trim() || null,
+        active,
+        won_by_user_id:
+          status === "ganado"
+            ? wonByUserId
+            : editingLead?.won_by_user_id ?? null,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (editingLead) {
+        const { error: updateError } = await supabase
+          .from("leads")
+          .update(payload)
+          .eq("id", editingLead.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from("leads")
+          .insert(payload);
+        if (insertError) throw insertError;
+      }
+
+      setShowForm(false);
+      resetForm();
+      setSuccess(
+        editingLead
+          ? "Los cambios del prospecto se guardaron correctamente."
+          : "El prospecto se creó correctamente.",
+      );
+      await loadLeads();
+    } catch (saveError) {
+      console.error("Error guardando prospecto:", saveError);
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "No pudimos guardar el prospecto.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (lead: PanelLead) => {
+    if (role !== "admin") return;
+    setProcessingId(lead.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const { error: updateError } = await supabase
+        .from("leads")
+        .update({
+          active: !lead.active,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", lead.id);
+
+      if (updateError) throw updateError;
+      setSuccess(
+        lead.active
+          ? "El prospecto fue desactivado."
+          : "El prospecto fue activado.",
+      );
+      await loadLeads();
+    } catch (toggleError) {
+      console.error("Error cambiando estado del prospecto:", toggleError);
+      setError(
+        toggleError instanceof Error
+          ? toggleError.message
+          : "No pudimos cambiar el estado del prospecto.",
+      );
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDeleteLead = async (lead: PanelLead) => {
+    if (role !== "admin") return;
+
+    const confirmed = window.confirm(
+      `¿Querés eliminar el prospecto "${lead.name}"? Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+
+    setProcessingId(lead.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const { error: deleteError } = await supabase
+        .from("leads")
+        .delete()
+        .eq("id", lead.id);
+
+      if (deleteError) throw deleteError;
+      setSuccess("El prospecto fue eliminado.");
+      await loadLeads();
+    } catch (deleteError) {
+      console.error("Error eliminando prospecto:", deleteError);
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "No pudimos eliminar el prospecto.",
+      );
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleConvertLead = async (lead: PanelLead) => {
+    if (role !== "admin") return;
+
+    if (lead.converted_client_id) {
+      setError("Este prospecto ya fue convertido anteriormente.");
+      return;
+    }
+
+    if (lead.status !== "ganado") {
+      setError(
+        "Para convertir un prospecto, primero debe estar en estado Ganado.",
+      );
+      return;
+    }
+
+    if (!lead.won_by_user_id) {
+      setError(
+        "Este prospecto no tiene un vendedor responsable. Editalo y asigná quién ganó el cliente.",
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Convertir "${lead.name}" en cliente?\n\nSe creará un cliente con sus datos actuales. Esta acción no se ejecuta automáticamente y quedará vinculada al prospecto.`,
+    );
+    if (!confirmed) return;
+
+    setProcessingId(lead.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const { data: clientId, error: conversionError } =
+        await supabase.rpc("convert_lead_to_client", {
+          p_lead_id: lead.id,
+        });
+
+      if (conversionError) throw conversionError;
+      if (!clientId) {
+        throw new Error(
+          "La conversión no devolvió el identificador del cliente.",
+        );
+      }
+
+      setSuccess(
+        `El prospecto "${lead.name}" se convirtió correctamente en cliente.`,
+      );
+      await loadLeads();
+    } catch (conversionError) {
+      console.error("Error convirtiendo prospecto:", conversionError);
+      setError(
+        conversionError instanceof Error
+          ? conversionError.message
+          : "No pudimos convertir el prospecto en cliente.",
+      );
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const filteredLeads = leads.filter((lead) => {
+    if (activeFilter === "activos" && !lead.active) return false;
+    if (activeFilter === "inactivos" && lead.active) return false;
+    if (statusFilter !== "todos" && lead.status !== statusFilter) {
+      return false;
+    }
+    if (!normalizedSearch) return true;
+
+    return [
+      lead.name,
+      lead.company,
+      lead.email,
+      lead.phone,
+      lead.source,
+      lead.notes,
+      lead.won_by_name,
+      lead.converted_by_name,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+  });
+
+  const activeLeads = leads.filter((lead) => lead.active);
+  const inactiveCount = leads.length - activeLeads.length;
+  const inProgressCount = activeLeads.filter((lead) =>
+    ["contactado", "propuesta"].includes(lead.status),
+  ).length;
+  const today = getLocalDateString();
+  const followUpsDue = activeLeads.filter(
+    (lead) => lead.next_follow_up && lead.next_follow_up <= today,
+  ).length;
+
+  const statusLabel = (value: PanelLead["status"]) => {
+    switch (value) {
+      case "contactado": return "Contactado";
+      case "propuesta": return "Propuesta";
+      case "ganado": return "Ganado";
+      case "perdido": return "Perdido";
+      default: return "Nuevo";
+    }
+  };
+
+  const statusClass = (value: PanelLead["status"]) => {
+    switch (value) {
+      case "ganado":
+        return "border-green-500/30 bg-green-500/10 text-green-400";
+      case "perdido":
+        return "border-red-500/30 bg-red-500/10 text-red-400";
+      case "propuesta":
+        return "border-accent/30 bg-accent/10 text-accent";
+      default:
+        return "border-border text-muted-foreground";
+    }
+  };
+
   return (
     <ModuleHeader
       eyebrow="// PROSPECTOS"
       title="Prospectos"
       description={
         role === "admin"
-          ? "Administración y seguimiento de prospectos."
-          : "Consulta y gestión de prospectos."
+          ? "Administración y seguimiento de oportunidades comerciales."
+          : "Consulta de prospectos y oportunidades comerciales."
       }
-      actionLabel="Nuevo prospecto"
+      actionLabel={role === "admin" ? "Nuevo prospecto" : undefined}
+      onAction={handleOpenNew}
     >
-      <div className="rounded-xl border border-border bg-card p-8 text-center">
-        <div className="mb-3 text-3xl">
-          🎯
+      {error && (
+        <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-5 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+          {success}
+        </div>
+      )}
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Total</p>
+          <p className="mt-2 text-2xl font-semibold">{leads.length}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Prospectos registrados
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Activos</p>
+          <p className="mt-2 text-2xl font-semibold text-green-400">
+            {activeLeads.length}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            En seguimiento
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm text-muted-foreground">En progreso</p>
+          <p className="mt-2 text-2xl font-semibold">{inProgressCount}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Contactados o con propuesta
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm text-muted-foreground">
+            Seguimientos pendientes
+          </p>
+          <p
+            className={`mt-2 text-2xl font-semibold ${
+              followUpsDue > 0 ? "text-amber-400" : ""
+            }`}
+          >
+            {followUpsDue}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Para hoy o fechas anteriores
+          </p>
+        </div>
+      </div>
+
+      {inactiveCount > 0 && (
+        <p className="mb-5 text-xs text-muted-foreground">
+          También hay {inactiveCount}{" "}
+          {inactiveCount === 1
+            ? "prospecto inactivo"
+            : "prospectos inactivos"}{" "}
+          en el registro.
+        </p>
+      )}
+
+      {showForm && role === "admin" && (
+        <form
+          onSubmit={handleSaveLead}
+          className="mb-6 rounded-xl border border-border bg-card p-6"
+        >
+          <div className="mb-6">
+            <p className="text-sm font-medium tracking-wide text-accent">
+              {editingLead ? "// EDITAR PROSPECTO" : "// NUEVO PROSPECTO"}
+            </p>
+            <h2 className="mt-1 text-xl font-semibold">
+              {editingLead ? "Editar prospecto" : "Crear prospecto"}
+            </h2>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Nombre *
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className={input}
+                placeholder="Nombre del contacto"
+                required
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Empresa
+              </label>
+              <input
+                type="text"
+                value={company}
+                onChange={(event) => setCompany(event.target.value)}
+                className={input}
+                placeholder="Empresa o razón social"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className={input}
+                placeholder="contacto@empresa.com"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Teléfono
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                className={input}
+                placeholder="+54 11 ..."
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Origen
+              </label>
+              <input
+                type="text"
+                value={source}
+                onChange={(event) => setSource(event.target.value)}
+                className={input}
+                placeholder="Ej.: Web, referido, redes sociales..."
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Estado
+              </label>
+              <select
+                value={status}
+                onChange={(event) =>
+                  setStatus(event.target.value as PanelLead["status"])
+                }
+                className={input}
+              >
+                <option value="nuevo">Nuevo</option>
+                <option value="contactado">Contactado</option>
+                <option value="propuesta">Propuesta</option>
+                <option value="ganado">Ganado</option>
+                <option value="perdido">Perdido</option>
+              </select>
+            </div>
+
+            {status === "ganado" && (
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Vendedor responsable *
+                </label>
+                <select
+                  value={wonByUserId}
+                  onChange={(event) => setWonByUserId(event.target.value)}
+                  className={input}
+                  required
+                >
+                  <option value="">Seleccionar vendedor</option>
+                  {profiles.map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.full_name || profile.email || "Usuario"}
+                    </option>
+                  ))}
+                </select>
+                {profiles.length === 0 && (
+                  <p className="mt-2 text-xs text-amber-400">
+                    No se encontraron usuarios registrados para seleccionar.
+                  </p>
+                )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Seleccioná quién consiguió cerrar esta oportunidad. Puede
+                  ser distinto del administrador que registra el cambio.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Próximo seguimiento
+              </label>
+              <input
+                type="date"
+                value={nextFollowUp}
+                onChange={(event) => setNextFollowUp(event.target.value)}
+                className={input}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Estado del registro
+              </label>
+              <select
+                value={active ? "activo" : "inactivo"}
+                onChange={(event) =>
+                  setActive(event.target.value === "activo")
+                }
+                className={input}
+              >
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-medium">
+                Notas
+              </label>
+              <textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                className={`${input} min-h-28 resize-y`}
+                placeholder="Detalles de conversaciones, necesidades, acuerdos..."
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={saving}
+              className={btnGhost}
+            >
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving} className={btn}>
+              {saving
+                ? "Guardando..."
+                : editingLead
+                  ? "Guardar cambios"
+                  : "Guardar prospecto"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div className="rounded-xl border border-border bg-card">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="font-semibold">Lista de prospectos</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {filteredLeads.length === 1
+                  ? "1 prospecto mostrado"
+                  : `${filteredLeads.length} prospectos mostrados`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={loadLeads}
+              disabled={loading}
+              className={btnGhost}
+            >
+              {loading ? "Actualizando..." : "Actualizar"}
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className={input}
+              placeholder="Buscar nombre, empresa, email, teléfono, origen o notas..."
+            />
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className={input}
+            >
+              <option value="todos">Todos los estados</option>
+              <option value="nuevo">Nuevo</option>
+              <option value="contactado">Contactado</option>
+              <option value="propuesta">Propuesta</option>
+              <option value="ganado">Ganado</option>
+              <option value="perdido">Perdido</option>
+            </select>
+            <select
+              value={activeFilter}
+              onChange={(event) =>
+                setActiveFilter(
+                  event.target.value as "todos" | "activos" | "inactivos",
+                )
+              }
+              className={input}
+            >
+              <option value="activos">Prospectos activos</option>
+              <option value="inactivos">Prospectos inactivos</option>
+              <option value="todos">Todos los registros</option>
+            </select>
+          </div>
         </div>
 
-        <h2 className="text-lg font-semibold">
-          Módulo de prospectos
-        </h2>
+        {loading ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            Cargando prospectos...
+          </div>
+        ) : filteredLeads.length === 0 ? (
+          <div className="p-10 text-center">
+            <div className="mb-3 text-3xl">🎯</div>
+            <h3 className="font-semibold">
+              {leads.length === 0
+                ? "No hay prospectos todavía"
+                : "No encontramos prospectos"}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {leads.length === 0
+                ? "Creá el primer prospecto para comenzar el seguimiento comercial."
+                : "Probá con otro término de búsqueda o cambiá los filtros."}
+            </p>
+            {leads.length === 0 && role === "admin" && (
+              <button
+                type="button"
+                onClick={handleOpenNew}
+                className={`${btn} mt-5`}
+              >
+                + Nuevo prospecto
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {filteredLeads.map((lead) => {
+              const linkedClient = clients.find(
+                (client) => client.id === lead.converted_client_id,
+              );
+              const winnerProfile = profiles.find(
+                (item) => item.id === lead.won_by_user_id,
+              );
+              const winnerName =
+              winnerProfile?.full_name?.trim() ||
+              `SIN NOMBRE - ${winnerProfile?.email || lead.won_by_name || "SIN USUARIO"}`;
 
-        <p className="mt-2 text-sm text-muted-foreground">
-          La navegación ya está funcionando. El próximo paso es conectar
-          este módulo con la tabla <strong>leads</strong> de Supabase.
-        </p>
+              const converterName =
+                lead.converted_by_name ||
+                getProfileNameById(lead.converted_by_user_id) ||
+                "Usuario sin nombre";
+
+              const hasWinnerHistory = Boolean(
+                lead.won_by_user_id || lead.won_by_name || lead.won_at,
+              );
+
+              const hasConversionHistory = Boolean(
+                lead.converted_client_id ||
+                  lead.converted_by_user_id ||
+                  lead.converted_by_name ||
+                  lead.converted_at,
+              );
+
+              return (
+                <div
+                  key={lead.id}
+                  className={`p-5 transition ${
+                    lead.active ? "hover:bg-background/30" : "opacity-60"
+                  }`}
+                >
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold">{lead.name}</h3>
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs ${statusClass(
+                            lead.status,
+                          )}`}
+                        >
+                          {statusLabel(lead.status)}
+                        </span>
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs ${
+                            lead.active
+                              ? "border-green-500/30 bg-green-500/10 text-green-400"
+                              : "border-border text-muted-foreground"
+                          }`}
+                        >
+                          {lead.active ? "Activo" : "Inactivo"}
+                        </span>
+
+                        {lead.converted_client_id && (
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-xs ${
+                              linkedClient
+                                ? "border-green-500/30 bg-green-500/10 text-green-400"
+                                : "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                            }`}
+                          >
+                            {linkedClient
+                              ? "Cliente vinculado"
+                              : "Conversión histórica"}
+                          </span>
+                        )}
+                      </div>
+
+                      {lead.company && (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {lead.company}
+                        </p>
+                      )}
+
+                      <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                        {lead.email && (
+                          <span className="truncate">✉️ {lead.email}</span>
+                        )}
+                        {lead.phone && <span>📞 {lead.phone}</span>}
+                        {lead.source && <span>🔎 Origen: {lead.source}</span>}
+                        <span>
+                          📅 Seguimiento:{" "}
+                          {lead.next_follow_up
+                            ? formatDate(lead.next_follow_up)
+                            : "Sin fecha"}
+                        </span>
+                        <span>Alta: {formatDateTime(lead.created_at)}</span>
+                        {lead.updated_at !== lead.created_at && (
+                          <span>
+                            Actualizado: {formatDateTime(lead.updated_at)}
+                          </span>
+                        )}
+                      </div>
+
+                      {lead.notes && (
+                        <div className="mt-3 rounded-lg border border-border bg-background/30 px-3 py-2">
+                          <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                            {lead.notes}
+                          </p>
+                        </div>
+                      )}
+
+                      {hasWinnerHistory && (
+                        <div className="mt-4 rounded-lg border border-border bg-background/30 p-3">
+                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-accent">
+                            Historial de cierre
+                          </p>
+                          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                            <span>
+                              🏆 Ganado por:{" "}
+                              <strong className="font-medium text-foreground">
+                                {winnerName}
+                              </strong>
+                            </span>
+                            <span>
+                              📅 Fecha de cierre:{" "}
+                              <strong className="font-medium text-foreground">
+                                {lead.won_at
+                                  ? formatDateTime(lead.won_at)
+                                  : "No registrada"}
+                              </strong>
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {hasConversionHistory && (
+                        <div className="mt-3 rounded-lg border border-border bg-background/30 p-3">
+                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-accent">
+                            Historial de conversión
+                          </p>
+                          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                            <span>
+                              👤 Convertido por:{" "}
+                              <strong className="font-medium text-foreground">
+                                {converterName}
+                              </strong>
+                            </span>
+                            <span>
+                              📅 Fecha de conversión:{" "}
+                              <strong className="font-medium text-foreground">
+                                {lead.converted_at
+                                  ? formatDateTime(lead.converted_at)
+                                  : "No registrada"}
+                              </strong>
+                            </span>
+                          </div>
+
+                          {lead.converted_client_id && (
+                            <div className="mt-3 border-t border-border pt-3">
+                              {linkedClient ? (
+                                <p className="text-xs text-muted-foreground">
+                                  Cliente vinculado:{" "}
+                                  <strong className="font-medium text-green-400">
+                                    {linkedClient.name}
+                                  </strong>
+                                </p>
+                              ) : (
+                                <p className="text-xs text-amber-400">
+                                  Cliente eliminado o no disponible. Se
+                                  conserva el registro histórico de la
+                                  conversión.
+                                </p>
+                              )}
+                              <p className="mt-2 break-all text-xs text-muted-foreground">
+                                ID histórico del cliente:{" "}
+                                {lead.converted_client_id}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {role === "admin" && (
+                      <div className="flex shrink-0 flex-wrap gap-2 xl:max-w-64 xl:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(lead)}
+                          disabled={processingId === lead.id}
+                          className={btnGhost}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(lead)}
+                          disabled={processingId === lead.id}
+                          className={btnGhost}
+                        >
+                          {processingId === lead.id
+                            ? "Procesando..."
+                            : lead.active
+                              ? "Desactivar"
+                              : "Activar"}
+                        </button>
+                        {lead.status === "ganado" &&
+                          !lead.converted_client_id && (
+                            <button
+                              type="button"
+                              onClick={() => handleConvertLead(lead)}
+                              disabled={processingId === lead.id}
+                              className={btn}
+                            >
+                              Convertir en cliente
+                            </button>
+                          )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLead(lead)}
+                          disabled={processingId === lead.id}
+                          className="rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </ModuleHeader>
   );
@@ -1860,13 +2791,10 @@ function PlaceholderModule({
       description={description}
     >
       <div className="rounded-xl border border-border bg-card p-8 text-center">
-        <h2 className="text-lg font-semibold">
-          Módulo en preparación
-        </h2>
-
+        <h2 className="text-lg font-semibold">Módulo en preparación</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Esta sección será desarrollada después de completar
-          Tareas, Clientes y Prospectos.
+          Esta sección será desarrollada después de completar Tareas,
+          Clientes y Prospectos.
         </p>
       </div>
     </ModuleHeader>
@@ -1895,27 +2823,15 @@ function ModuleHeader({
           <p className="text-sm font-medium tracking-wide text-accent">
             {eyebrow}
           </p>
-
-          <h1 className="mt-2 text-3xl font-semibold">
-            {title}
-          </h1>
-
-          <p className="mt-2 text-muted-foreground">
-            {description}
-          </p>
+          <h1 className="mt-2 text-3xl font-semibold">{title}</h1>
+          <p className="mt-2 text-muted-foreground">{description}</p>
         </div>
-
         {actionLabel && (
-          <button
-            type="button"
-            onClick={onAction}
-            className={btn}
-          >
+          <button type="button" onClick={onAction} className={btn}>
             + {actionLabel}
           </button>
         )}
       </div>
-
       {children}
     </>
   );
@@ -1938,14 +2854,10 @@ function Dashboard({ role }: { role: PanelRole }) {
       setError("");
 
       try {
-        const today = new Date().toISOString().slice(0, 10);
-
+        const today = getLocalDateString();
         const firstDayOfMonth = new Date();
         firstDayOfMonth.setDate(1);
-
-        const monthStart = firstDayOfMonth
-          .toISOString()
-          .slice(0, 10);
+        const monthStart = getLocalDateString(firstDayOfMonth);
 
         const [
           pendingTasksResult,
@@ -1958,55 +2870,37 @@ function Dashboard({ role }: { role: PanelRole }) {
         ] = await Promise.all([
           supabase
             .from("tasks")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
+            .select("id", { count: "exact", head: true })
             .is("completed_at", null),
 
           supabase
             .from("tasks")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
+            .select("id", { count: "exact", head: true })
             .is("completed_at", null)
             .lt("due_date", today),
 
           supabase
             .from("clients")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
+            .select("id", { count: "exact", head: true })
             .eq("active", true),
 
           supabase
             .from("leads")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
+            .select("id", { count: "exact", head: true })
             .eq("active", true),
 
           supabase
             .from("tasks")
-            .select(
-              "id,title,status,priority,due_date",
-            )
+            .select("id,title,status,priority,due_date")
             .is("completed_at", null)
             .not("due_date", "is", null)
             .gte("due_date", today)
-            .order("due_date", {
-              ascending: true,
-            })
+            .order("due_date", { ascending: true })
             .limit(5),
 
           supabase
             .from("expenses")
-            .select(
-              "amount,currency,spent_on",
-            )
+            .select("amount,currency,spent_on")
             .gte("spent_on", monthStart)
             .lte("spent_on", today)
             .eq("active", true),
@@ -2014,17 +2908,10 @@ function Dashboard({ role }: { role: PanelRole }) {
           role === "admin"
             ? supabase
                 .from("activity_log")
-                .select(
-                  "id,at,action,entity,entity_id,detail",
-                )
-                .order("at", {
-                  ascending: false,
-                })
+                .select("id,at,action,entity,entity_id,detail")
+                .order("at", { ascending: false })
                 .limit(5)
-            : Promise.resolve({
-                data: [],
-                error: null,
-              }),
+            : Promise.resolve({ data: [], error: null }),
         ]);
 
         const firstError =
@@ -2036,78 +2923,44 @@ function Dashboard({ role }: { role: PanelRole }) {
           expensesResult.error ??
           activityResult.error;
 
-        if (firstError) {
-          throw firstError;
-        }
+        if (firstError) throw firstError;
 
         const expenseMap = new Map<string, number>();
-
         for (const expense of expensesResult.data ?? []) {
-          const currency =
-            expense.currency || "SIN MONEDA";
-
-          const amount =
-            Number(expense.amount) || 0;
-
+          const currency = expense.currency || "SIN MONEDA";
+          const amount = Number(expense.amount) || 0;
           expenseMap.set(
             currency,
-            (expenseMap.get(currency) ?? 0) +
-              amount,
+            (expenseMap.get(currency) ?? 0) + amount,
           );
         }
 
-        const expenses = Array.from(
-          expenseMap.entries(),
-        )
-          .map(([currency, total]) => ({
-            currency,
-            total,
-          }))
-          .sort(
-            (a, b) => b.total - a.total,
-          );
+        const expenses = Array.from(expenseMap.entries())
+          .map(([currency, total]) => ({ currency, total }))
+          .sort((a, b) => b.total - a.total);
 
-        if (!mounted) {
-          return;
-        }
+        if (!mounted) return;
 
         setData({
-          pendingTasks:
-            pendingTasksResult.count ?? 0,
-          overdueTasks:
-            overdueTasksResult.count ?? 0,
-          activeClients:
-            activeClientsResult.count ?? 0,
-          activeLeads:
-            activeLeadsResult.count ?? 0,
+          pendingTasks: pendingTasksResult.count ?? 0,
+          overdueTasks: overdueTasksResult.count ?? 0,
+          activeClients: activeClientsResult.count ?? 0,
+          activeLeads: activeLeadsResult.count ?? 0,
           expenses,
-          upcomingTasks:
-            (upcomingTasksResult.data ??
-              []) as DashboardTask[],
-          recentActivity:
-            (activityResult.data ??
-              []) as DashboardActivity[],
+          upcomingTasks: (upcomingTasksResult.data ?? []) as DashboardTask[],
+          recentActivity: (activityResult.data ?? []) as DashboardActivity[],
         });
       } catch (dashboardError) {
-        console.error(
-          "Error cargando dashboard:",
-          dashboardError,
-        );
-
+        console.error("Error cargando dashboard:", dashboardError);
         if (mounted) {
-          setError(
-            "No pudimos cargar los datos del dashboard.",
-          );
+          setError("No pudimos cargar los datos del dashboard.");
         }
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
     loadDashboard();
-
     return () => {
       mounted = false;
     };
@@ -2120,25 +2973,18 @@ function Dashboard({ role }: { role: PanelRole }) {
           <p className="text-sm font-medium tracking-wide text-accent">
             // DASHBOARD
           </p>
-
-          <h1 className="mt-2 text-3xl font-semibold">
-            Panel interno
-          </h1>
-
+          <h1 className="mt-2 text-3xl font-semibold">Panel interno</h1>
           <p className="mt-2 text-muted-foreground">
             Cargando información...
           </p>
         </div>
-
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map(
-            (_, index) => (
-              <div
-                key={index}
-                className="h-32 animate-pulse rounded-xl border border-border bg-card"
-              />
-            ),
-          )}
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-32 animate-pulse rounded-xl border border-border bg-card"
+            />
+          ))}
         </div>
       </>
     );
@@ -2151,15 +2997,10 @@ function Dashboard({ role }: { role: PanelRole }) {
           <p className="text-sm font-medium tracking-wide text-accent">
             // DASHBOARD
           </p>
-
-          <h1 className="mt-2 text-3xl font-semibold">
-            Panel interno
-          </h1>
+          <h1 className="mt-2 text-3xl font-semibold">Panel interno</h1>
         </div>
-
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-400">
-          {error ||
-            "No hay datos disponibles."}
+          {error || "No hay datos disponibles."}
         </div>
       </>
     );
@@ -2171,11 +3012,7 @@ function Dashboard({ role }: { role: PanelRole }) {
         <p className="text-sm font-medium tracking-wide text-accent">
           // DASHBOARD
         </p>
-
-        <h1 className="mt-2 text-3xl font-semibold">
-          Panel interno
-        </h1>
-
+        <h1 className="mt-2 text-3xl font-semibold">Panel interno</h1>
         <p className="mt-2 text-muted-foreground">
           Resumen de la actividad interna de kvantcode.
         </p>
@@ -2187,20 +3024,17 @@ function Dashboard({ role }: { role: PanelRole }) {
           value={data.pendingTasks}
           description="Tareas sin completar"
         />
-
         <DashboardStat
           title="Tareas vencidas"
           value={data.overdueTasks}
           description="Pendientes con fecha vencida"
           alert={data.overdueTasks > 0}
         />
-
         <DashboardStat
           title="Clientes activos"
           value={data.activeClients}
           description="Clientes actualmente activos"
         />
-
         <DashboardStat
           title="Prospectos activos"
           value={data.activeLeads}
@@ -2214,42 +3048,25 @@ function Dashboard({ role }: { role: PanelRole }) {
             <EmptyState message="No hay tareas próximas." />
           ) : (
             <div className="divide-y divide-border">
-              {data.upcomingTasks.map(
-                (task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center justify-between gap-4 py-4"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">
-                        {task.title}
-                      </p>
-
-                      <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                        {task.priority && (
-                          <span>
-                            Prioridad:{" "}
-                            {task.priority}
-                          </span>
-                        )}
-
-                        {task.status && (
-                          <span>
-                            Estado:{" "}
-                            {task.status}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <span className="shrink-0 text-sm text-accent">
-                      {formatDate(
-                        task.due_date,
+              {data.upcomingTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center justify-between gap-4 py-4"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{task.title}</p>
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      {task.priority && (
+                        <span>Prioridad: {task.priority}</span>
                       )}
-                    </span>
+                      {task.status && <span>Estado: {task.status}</span>}
+                    </div>
                   </div>
-                ),
-              )}
+                  <span className="shrink-0 text-sm text-accent">
+                    {formatDate(task.due_date)}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </DashboardSection>
@@ -2259,25 +3076,19 @@ function Dashboard({ role }: { role: PanelRole }) {
             <EmptyState message="No hay gastos registrados este mes." />
           ) : (
             <div className="space-y-3">
-              {data.expenses.map(
-                (expense) => (
-                  <div
-                    key={expense.currency}
-                    className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-4 py-3"
-                  >
-                    <span className="text-sm text-muted-foreground">
-                      {expense.currency}
-                    </span>
-
-                    <span className="font-semibold">
-                      {formatAmount(
-                        expense.total,
-                        expense.currency,
-                      )}
-                    </span>
-                  </div>
-                ),
-              )}
+              {data.expenses.map((expense) => (
+                <div
+                  key={expense.currency}
+                  className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-4 py-3"
+                >
+                  <span className="text-sm text-muted-foreground">
+                    {expense.currency}
+                  </span>
+                  <span className="font-semibold">
+                    {formatAmount(expense.total, expense.currency)}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </DashboardSection>
@@ -2290,35 +3101,24 @@ function Dashboard({ role }: { role: PanelRole }) {
               <EmptyState message="No hay actividad registrada." />
             ) : (
               <div className="divide-y divide-border">
-                {data.recentActivity.map(
-                  (activity) => (
-                    <div
-                      key={activity.id}
-                      className="py-4"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-medium">
-                            {activity.action}
-                          </p>
-
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {activity.entity}
-                            {activity.entity_id
-                              ? ` · ${activity.entity_id}`
-                              : ""}
-                          </p>
-                        </div>
-
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          {formatDateTime(
-                            activity.at,
-                          )}
-                        </span>
+                {data.recentActivity.map((activity) => (
+                  <div key={activity.id} className="py-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-medium">{activity.action}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {activity.entity}
+                          {activity.entity_id
+                            ? ` · ${activity.entity_id}`
+                            : ""}
+                        </p>
                       </div>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {formatDateTime(activity.at)}
+                      </span>
                     </div>
-                  ),
-                )}
+                  </div>
+                ))}
               </div>
             )}
           </DashboardSection>
@@ -2347,23 +3147,15 @@ function DashboardStat({
           : "border-border hover:border-accent/50"
       }`}
     >
-      <p className="text-sm text-muted-foreground">
-        {title}
-      </p>
-
+      <p className="text-sm text-muted-foreground">{title}</p>
       <p
         className={`mt-3 text-3xl font-semibold ${
-          alert
-            ? "text-red-400"
-            : "text-foreground"
+          alert ? "text-red-400" : "text-foreground"
         }`}
       >
         {value}
       </p>
-
-      <p className="mt-2 text-xs text-muted-foreground">
-        {description}
-      </p>
+      <p className="mt-2 text-xs text-muted-foreground">{description}</p>
     </div>
   );
 }
@@ -2377,20 +3169,13 @@ function DashboardSection({
 }) {
   return (
     <section className="rounded-xl border border-border bg-card p-5">
-      <h2 className="mb-2 font-semibold">
-        {title}
-      </h2>
-
+      <h2 className="mb-2 font-semibold">{title}</h2>
       {children}
     </section>
   );
 }
 
-function EmptyState({
-  message,
-}: {
-  message: string;
-}) {
+function EmptyState({ message }: { message: string }) {
   return (
     <div className="py-8 text-center text-sm text-muted-foreground">
       {message}
@@ -2398,50 +3183,37 @@ function EmptyState({
   );
 }
 
+function getLocalDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function formatDate(value: string | null) {
-  if (!value) {
-    return "Sin fecha";
-  }
-
-  const [year, month, day] =
-    value.split("-");
-
-  if (!year || !month || !day) {
-    return value;
-  }
-
+  if (!value) return "Sin fecha";
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return value;
   return `${day}/${month}/${year}`;
 }
 
 function formatDateTime(value: string) {
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
 
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat(
-    "es-AR",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    },
-  ).format(date);
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
-function formatAmount(
-  amount: number,
-  _currency: string,
-) {
-  return new Intl.NumberFormat(
-    "es-AR",
-    {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    },
-  ).format(amount);
+function formatAmount(amount: number, _currency: string) {
+  return new Intl.NumberFormat("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function AccessDenied() {
@@ -2453,29 +3225,17 @@ function AccessDenied() {
     <main className="min-h-screen bg-background px-4 py-10 text-foreground">
       <div className="mx-auto flex min-h-[80vh] max-w-lg items-center justify-center">
         <div className="w-full rounded-2xl border border-border bg-card p-8 text-center shadow-xl">
-          <div className="mb-5 text-4xl">
-            🔒
-          </div>
-
-          <h1 className="text-2xl font-semibold">
-            Acceso no autorizado
-          </h1>
-
+          <div className="mb-5 text-4xl">🔒</div>
+          <h1 className="text-2xl font-semibold">Acceso no autorizado</h1>
           <p className="mt-3 text-muted-foreground">
             Tu cuenta está autenticada, pero no tiene permisos para acceder
             al panel interno.
           </p>
-
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link to="/" className={btnGhost}>
               Volver al sitio
             </Link>
-
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className={btn}
-            >
+            <button type="button" onClick={handleSignOut} className={btn}>
               Cerrar sesión
             </button>
           </div>
@@ -2494,10 +3254,7 @@ function LoadingScreen() {
           alt="kvantcode"
           className="mx-auto mb-4 h-12 w-auto opacity-80"
         />
-
-        <p className="text-sm text-muted-foreground">
-          Cargando panel...
-        </p>
+        <p className="text-sm text-muted-foreground">Cargando panel...</p>
       </div>
     </main>
   );
