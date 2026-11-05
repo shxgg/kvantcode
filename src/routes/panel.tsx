@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   useEffect,
   useState,
+  useRef,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -391,6 +392,7 @@ function PanelShell({
 
   const menuItems = [
     { label: "Dashboard" },
+    { label: "Kanban" },
     { label: "Tareas" },
     { label: "Clientes" },
     { label: "Prospectos" },
@@ -456,8 +458,14 @@ function PanelShell({
           </nav>
         </aside>
 
-        <main className="flex-1 p-6 md:p-8">
-          {section === "Dashboard" && <Dashboard role={role} />}
+        <main className="min-w-0 flex-1 p-6 md:p-8">
+          <nav aria-label="Secciones del panel" className="mb-6 flex gap-2 overflow-x-auto md:hidden">
+            {menuItems.map((item) => <button type="button" key={item.label} className={btnGhost}
+              aria-current={section === item.label ? "page" : undefined}
+              onClick={() => setSection(item.label)}>{item.label}</button>)}
+          </nav>
+          {section === "Kanban" && <TasksModule key="kanban" role={role} userId={userId} initialView="kanban" />}
+          {section === "Dashboard" && <Dashboard role={role} userId={userId} />}
           {section === "Tareas" && (
             <TasksModule role={role} userId={userId} />
           )}
@@ -479,19 +487,82 @@ function PanelShell({
    MÓDULO TAREAS
    ========================================================= */
 
+function TaskDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="space-y-1">
+      <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground"
+        style={expanded ? undefined : {
+          display: "-webkit-box",
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}>
+        {text}
+      </p>
+      <button type="button" className="text-xs text-accent underline underline-offset-2"
+        aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}
+        onMouseDown={(event) => event.stopPropagation()}
+        draggable={false}>
+        {expanded ? "Ver menos" : "Ver descripción completa"}
+      </button>
+    </div>
+  );
+}
+
+type PanelTask = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  assigned_to: string | null;
+  created_by: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+const taskStates = [
+  { value: "pendiente", label: "Pendiente" },
+  { value: "en_curso", label: "En curso" },
+  { value: "hecha", label: "Hecha" },
+];
+
 function TasksModule({
   role,
   userId,
+  initialView = "lista",
+  onTasksChanged,
 }: {
   role: PanelRole;
   userId: string;
+  initialView?: "lista" | "kanban" | "calendario";
+  onTasksChanged?: () => void;
 }) {
   const [tasks, setTasks] = useState<PanelTask[]>([]);
   const [profiles, setProfiles] = useState<PanelProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const lock = useRef(false);
+  const [view, setView] = useState(initialView);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [assigneeFilter, setAssigneeFilter] = useState("");
+  const [sortBy, setSortBy] = useState("due");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const detailRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (selectedId) detailRef.current?.focus();
+  }, [selectedId]);
+  const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const canUpdate = (task: PanelTask) => role === "admin" || task.assigned_to === userId;
   const [showForm, setShowForm] = useState(false);
 
   const [title, setTitle] = useState("");
@@ -503,6 +574,7 @@ function TasksModule({
 
   const loadTasks = async () => {
     setLoading(true);
+    setLoadFailed(false);
     setError("");
 
     try {
@@ -528,6 +600,7 @@ function TasksModule({
       setTasks((tasksResult.data ?? []) as PanelTask[]);
       setProfiles((profilesResult.data ?? []) as PanelProfile[]);
     } catch (loadError) {
+      setLoadFailed(true);
       console.error("Error cargando tareas:", loadError);
       setError(
         "No pudimos cargar las tareas. Revisá la consola para más detalles.",
@@ -551,6 +624,7 @@ function TasksModule({
   };
 
   const handleOpenForm = () => {
+    if (lock.current || loading) return;
     setError("");
     resetForm();
     setShowForm(true);
@@ -570,6 +644,8 @@ function TasksModule({
       return;
     }
 
+    if (lock.current || loading) return;
+    lock.current = true;
     setSaving(true);
     setError("");
 
@@ -584,6 +660,7 @@ function TasksModule({
         priority,
         due_date: dueDate || null,
         assigned_to: finalAssignedTo,
+        created_by: userId,
       });
 
       if (insertError) throw insertError;
@@ -591,6 +668,7 @@ function TasksModule({
       setShowForm(false);
       resetForm();
       await loadTasks();
+      onTasksChanged?.();
     } catch (createError) {
       console.error("Error creando tarea:", createError);
       setError(
@@ -599,56 +677,62 @@ function TasksModule({
           : "No pudimos crear la tarea.",
       );
     } finally {
+      lock.current = false;
       setSaving(false);
     }
   };
 
-  const handleCompleteTask = async (task: PanelTask) => {
+  const handleStatusChange = async (task: PanelTask, nextStatus: string) => {
+    if (!canUpdate(task) || lock.current || loading || saving || task.status === nextStatus) return;
+    if (!["pendiente", "en_curso", "hecha"].includes(nextStatus)) return;
+    lock.current = true;
     setCompletingId(task.id);
     setError("");
-
+    setNotice("");
     try {
-      const isCompleted = task.completed_at !== null;
-      const { error: updateError } = await supabase
-        .from("tasks")
-        .update({
-          status: isCompleted ? "pendiente" : "completada",
-          completed_at: isCompleted ? null : new Date().toISOString(),
-        })
-        .eq("id", task.id);
-
+      const { data, error: updateError } = await supabase.from("tasks")
+        .update({ status: nextStatus }).eq("id", task.id)
+        .select("id,title,description,status,priority,due_date,assigned_to,created_by,completed_at,created_at,updated_at")
+        .single();
       if (updateError) throw updateError;
-      await loadTasks();
-    } catch (completeError) {
-      console.error("Error actualizando tarea:", completeError);
-      setError(
-        completeError instanceof Error
-          ? completeError.message
-          : "No pudimos actualizar la tarea.",
-      );
+      if (!data) throw new Error("Sin permisos o tarea no disponible.");
+      setTasks((current) => current.map((item) => item.id === task.id ? data as PanelTask : item));
+      setNotice("Estado actualizado: " + task.title);
+      onTasksChanged?.();
+    } catch (error) {
+      console.error(error);
+      setError("No pudimos cambiar el estado. Actualizá la lista y revisá tus permisos o conexión.");
     } finally {
+      lock.current = false;
       setCompletingId(null);
+      setDraggedId(null);
     }
   };
+  const handleCompleteTask = (task: PanelTask) =>
+    handleStatusChange(task, task.status === "hecha" ? "pendiente" : "hecha");
 
   const handleDeleteTask = async (task: PanelTask) => {
-    if (role !== "admin") return;
+    if (role !== "admin" || lock.current || saving || loading) return;
 
     const confirmed = window.confirm(
       `¿Querés eliminar la tarea "${task.title}"?`,
     );
     if (!confirmed) return;
 
+    lock.current = true;
+    setCompletingId(task.id);
     setError("");
 
     try {
-      const { error: deleteError } = await supabase
+      const { data: deleted, error: deleteError } = await supabase
         .from("tasks")
         .delete()
-        .eq("id", task.id);
+        .eq("id", task.id).select("id").single();
 
       if (deleteError) throw deleteError;
+      if (!deleted) throw new Error("No se pudo eliminar la tarea.");
       await loadTasks();
+      onTasksChanged?.();
     } catch (deleteError) {
       console.error("Error eliminando tarea:", deleteError);
       setError(
@@ -656,6 +740,9 @@ function TasksModule({
           ? deleteError.message
           : "No pudimos eliminar la tarea.",
       );
+    } finally {
+      lock.current = false;
+      setCompletingId(null);
     }
   };
 
@@ -677,11 +764,43 @@ function TasksModule({
 
   const getStatusLabel = (value: string) => {
     switch (value) {
-      case "en_progreso": return "En progreso";
-      case "completada": return "Completada";
+      case "en_curso": return "En curso";
+      case "hecha": return "Hecha";
       default: return "Pendiente";
     }
   };
+
+  const visibleTasks = tasks.filter((task) =>
+    (!search.trim() || (task.title + " " + (task.description ?? "")).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) &&
+    (!statusFilter || task.status === statusFilter) &&
+    (!priorityFilter || task.priority === priorityFilter) &&
+    (!assigneeFilter || (assigneeFilter === "unassigned" ? !task.assigned_to : task.assigned_to === assigneeFilter))
+  ).sort((a, b) => {
+    const priorityRank: Record<string, number> = { urgente: 4, alta: 3, media: 2, baja: 1 };
+    if (sortBy === "title") return a.title.localeCompare(b.title, "es");
+    if (sortBy === "priority") return (priorityRank[b.priority] ?? 0) - (priorityRank[a.priority] ?? 0) || a.title.localeCompare(b.title, "es");
+    if (sortBy === "created") return b.created_at.localeCompare(a.created_at);
+    return (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || a.title.localeCompare(b.title, "es");
+  });
+  const selectedTask = tasks.find((task) => task.id === selectedId);
+  const monthLabel = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(month);
+  const offset = (month.getDay() + 6) % 7;
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const calendarDays = Array.from({ length: Math.ceil((offset + daysInMonth) / 7) * 7 }, (_, index) =>
+    new Date(month.getFullYear(), month.getMonth(), index - offset + 1));
+  const withoutDate = visibleTasks.filter((task) => !task.due_date);
+
+  const stateControl = (task: PanelTask) => (
+    <label className="block text-xs text-muted-foreground">
+      Estado de {task.title}
+      <select className={input + " mt-1"} value={task.status}
+        disabled={!canUpdate(task) || saving || loading || completingId !== null}
+        onChange={(event) => void handleStatusChange(task, event.target.value)}>
+        {taskStates.map((state) => <option key={state.value} value={state.value}>{state.label}</option>)}
+      </select>
+      {!canUpdate(task) && <span className="mt-1 block">Solo lectura: no está asignada a vos.</span>}
+    </label>
+  );
 
   return (
     <ModuleHeader
@@ -696,9 +815,63 @@ function TasksModule({
       onAction={handleOpenForm}
     >
       {error && (
-        <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div role="alert" className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
+      )}
+
+      <p role="status" aria-live="polite" className="mb-3 text-sm">{notice}</p>
+      <div role="group" aria-label="Vista de tareas" className="mb-5 flex gap-2">
+        <button type="button" className={btnGhost} aria-pressed={view === "lista"} onClick={() => setView("lista")}>Lista</button>
+        <button type="button" className={btnGhost} aria-pressed={view === "kanban"} onClick={() => setView("kanban")}>Kanban</button>
+        <button type="button" className={btnGhost} aria-pressed={view === "calendario"} onClick={() => setView("calendario")}>Calendario</button>
+      </div>
+      <div className="mb-5 grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-5">
+        <label className="text-xs text-muted-foreground">Buscar
+          <input type="search" className={input + " mt-1"} value={search} placeholder="Asunto o descripción" onChange={(event) => setSearch(event.target.value)} />
+        </label>
+        <label className="text-xs text-muted-foreground">Estado
+          <select className={input + " mt-1"} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">Todos</option>{taskStates.map((state) => <option key={state.value} value={state.value}>{state.label}</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-muted-foreground">Prioridad
+          <select className={input + " mt-1"} value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
+            <option value="">Todas</option>{["baja","media","alta","urgente"].map((value) => <option key={value} value={value}>{getPriorityLabel(value)}</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-muted-foreground">Responsable
+          <select className={input + " mt-1"} value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)}>
+            <option value="">Todos</option><option value="unassigned">Sin asignar</option>
+            {Array.from(new Set([...profiles.map((profile) => profile.id), ...tasks.flatMap((task) => task.assigned_to ? [task.assigned_to] : [])])).map((id) =>
+              <option key={id} value={id}>{getProfileName(id)}</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-muted-foreground">Ordenar por
+          <select className={input + " mt-1"} value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+            <option value="due">Vencimiento más próximo</option><option value="title">Asunto A–Z</option>
+            <option value="priority">Mayor prioridad</option><option value="created">Más recientes</option>
+          </select>
+        </label>
+        <button type="button" className={btnGhost} onClick={() => { setSearch(""); setStatusFilter(""); setPriorityFilter(""); setAssigneeFilter(""); setSortBy("due"); }}>Limpiar filtros</button>
+      </div>
+      {selectedTask && (
+        <section ref={detailRef} tabIndex={-1} aria-label="Detalle de tarea" className="mb-5 rounded-xl border border-accent/40 bg-card p-5">
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="break-words text-lg font-semibold">{selectedTask.title}</h2>
+            <button type="button" className={btnGhost} onClick={() => setSelectedId(null)}>Cerrar detalle</button>
+          </div>
+          <p className="mt-3 whitespace-pre-wrap break-words text-sm">{selectedTask.description || "Sin descripción"}</p>
+          <dl className="my-4 grid gap-3 text-sm sm:grid-cols-2">
+            <div><dt className="text-muted-foreground">Creador</dt><dd>{getProfileName(selectedTask.created_by)}</dd></div>
+            <div><dt className="text-muted-foreground">Responsable</dt><dd>{getProfileName(selectedTask.assigned_to)}</dd></div>
+            <div><dt className="text-muted-foreground">Prioridad</dt><dd>{getPriorityLabel(selectedTask.priority)}</dd></div>
+            <div><dt className="text-muted-foreground">Vencimiento</dt><dd>{formatDate(selectedTask.due_date)}</dd></div>
+            <div><dt className="text-muted-foreground">Creada</dt><dd>{formatDateTime(selectedTask.created_at)}</dd></div>
+            <div><dt className="text-muted-foreground">Finalizada</dt><dd>{selectedTask.completed_at ? formatDateTime(selectedTask.completed_at) : "Sin finalizar"}</dd></div>
+          </dl>
+          {stateControl(selectedTask)}
+        </section>
       )}
 
       {showForm && (
@@ -791,7 +964,8 @@ function TasksModule({
                 className={input}
               >
                 <option value="pendiente">Pendiente</option>
-                <option value="en_progreso">En progreso</option>
+                <option value="en_curso">En curso</option>
+                <option value="hecha">Hecha</option>
               </select>
             </div>
 
@@ -827,15 +1001,15 @@ function TasksModule({
       <div className="rounded-xl border border-border bg-card">
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="font-semibold">Lista de tareas</h2>
+            <h2 className="font-semibold">{view === "lista" ? "Lista de tareas" : view === "calendario" ? "Calendario de vencimientos" : "Tablero Kanban"}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {tasks.length === 1 ? "1 tarea" : `${tasks.length} tareas`}
+              {visibleTasks.length} de {tasks.length} tareas
             </p>
           </div>
           <button
             type="button"
             onClick={loadTasks}
-            disabled={loading}
+            disabled={loading || saving || completingId !== null}
             className={btnGhost}
           >
             {loading ? "Actualizando..." : "Actualizar"}
@@ -845,6 +1019,96 @@ function TasksModule({
         {loading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             Cargando tareas...
+          </div>
+        ) : loadFailed ? (
+          <p className="p-8 text-center text-sm text-muted-foreground">La carga falló. Usá Actualizar para volver a intentarlo.</p>
+        ) : view === "calendario" ? (
+          <div className="p-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 aria-live="polite" className="font-semibold capitalize">{monthLabel}</h3>
+              <div className="flex gap-2">
+                <button type="button" className={btnGhost} aria-label="Mes anterior" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>Anterior</button>
+                <button type="button" className={btnGhost} onClick={() => setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>Hoy</button>
+                <button type="button" className={btnGhost} aria-label="Mes siguiente" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>Siguiente</button>
+              </div>
+            </div>
+            <p className="mb-3 text-xs text-muted-foreground">Las tareas se ubican por su fecha de vencimiento. Seleccioná un asunto para ver el detalle.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px] table-fixed border-collapse text-sm">
+                <caption className="sr-only">Vencimientos de {monthLabel}</caption>
+                <thead><tr>{["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map((day) => <th scope="col" key={day} className="border border-border p-2">{day}</th>)}</tr></thead>
+                <tbody>{Array.from({ length: calendarDays.length / 7 }, (_, week) => (
+                  <tr key={week}>{calendarDays.slice(week * 7, week * 7 + 7).map((day) => {
+                    const date = getLocalDateString(day);
+                    const dayTasks = visibleTasks.filter((task) => task.due_date === date);
+                    return <td key={date} className={"h-28 border border-border p-2 align-top " + (day.getMonth() !== month.getMonth() ? "bg-background/50 text-muted-foreground" : "")}>
+                      <time dateTime={date} aria-current={date === getLocalDateString() ? "date" : undefined}
+                        className={date === getLocalDateString() ? "rounded bg-accent/20 px-1 font-bold text-accent" : ""}>{day.getDate()}</time>
+                      <div className="mt-2 space-y-1">{dayTasks.map((task) =>
+                        <button key={task.id} type="button" className={"block w-full rounded border border-border p-1 text-left text-xs hover:border-accent " + (task.status === "hecha" ? "text-muted-foreground line-through" : "text-accent")}
+                          onClick={() => setSelectedId(task.id)}>{task.title}<span className="block text-[10px]">{getStatusLabel(task.status)}</span></button>)}</div>
+                    </td>;
+                  })}</tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="mt-4">
+              <h3 className="mb-2 text-sm font-semibold">Sin fecha ({withoutDate.length})</h3>
+              <div className="flex flex-wrap gap-2">{withoutDate.map((task) =>
+                <button type="button" key={task.id} className={btnGhost} onClick={() => setSelectedId(task.id)}>{task.title}</button>)}</div>
+              {withoutDate.length === 0 && <p className="text-xs text-muted-foreground">No hay tareas sin fecha para estos filtros.</p>}
+            </div>
+          </div>
+        ) : view === "kanban" ? (
+          <div className="p-4">
+            <p className="mb-4 text-sm text-muted-foreground">Arrastrá una tarjeta a otra columna o usá su selector de estado.</p>
+            <div className="grid gap-4 xl:grid-cols-3">
+              {taskStates.map((state) => {
+                const columnTasks = visibleTasks.filter((task) => task.status === state.value);
+                return (
+                  <section key={state.value} aria-label={state.label}
+                    className={"min-w-0 rounded-xl border p-3 " + (draggedId ? "border-accent bg-accent/5" : "border-border bg-background/40")}
+                    onDragOver={(event) => {
+                      if (draggedId && !lock.current) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const task = tasks.find((item) => item.id === draggedId);
+                      setDraggedId(null);
+                      if (task) void handleStatusChange(task, state.value);
+                    }}>
+                    <h3 className="mb-4 flex justify-between font-semibold">{state.label}<span>{columnTasks.length}</span></h3>
+                    <div className="space-y-3">
+                      {columnTasks.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Sin tareas</p>}
+                      {columnTasks.map((task) => (
+                        <article key={task.id} draggable={canUpdate(task) && !saving && completingId === null}
+                          onDragStart={(event) => {
+                            if (!canUpdate(task) || lock.current) { event.preventDefault(); return; }
+                            event.dataTransfer.setData("text/plain", task.id);
+                            event.dataTransfer.effectAllowed = "move";
+                            setDraggedId(task.id);
+                          }}
+                          onDragEnd={() => setDraggedId(null)}
+                          aria-busy={completingId === task.id}
+                          className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-4">
+                          <h4 className="break-words font-semibold"><button type="button" className="text-left hover:text-accent" onClick={() => setSelectedId(task.id)}>{task.title}</button></h4>
+                          {task.description && <TaskDescription text={task.description} />}
+                          <p className="text-xs text-accent">Prioridad: {getPriorityLabel(task.priority)}</p>
+                          <p className="break-words text-xs text-muted-foreground">Responsable: {getProfileName(task.assigned_to)}</p>
+                          <p className="text-xs text-muted-foreground">Vencimiento: {formatDate(task.due_date)}</p>
+                          {task.completed_at && <p className="text-xs text-muted-foreground">Finalizada: {formatDateTime(task.completed_at)}</p>}
+                          {stateControl(task)}
+                          {completingId === task.id && <p role="status" className="text-xs">Actualizando...</p>}
+                          {role === "admin" && <button type="button" className={btnGhost}
+                            disabled={saving || completingId !== null}
+                            onClick={() => void handleDeleteTask(task)}>Eliminar</button>}
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
           </div>
         ) : tasks.length === 0 ? (
           <div className="p-10 text-center">
@@ -862,84 +1126,33 @@ function TasksModule({
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {tasks.map((task) => {
-              const completed = task.completed_at !== null;
-              return (
-                <div
-                  key={task.id}
-                  className={`p-5 transition ${
-                    completed ? "opacity-60" : "hover:bg-background/30"
-                  }`}
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3
-                          className={`font-semibold ${
-                            completed ? "line-through" : ""
-                          }`}
-                        >
-                          {task.title}
-                        </h3>
-                        <span
-                          className={`rounded-full border px-2.5 py-1 text-xs ${
-                            completed
-                              ? "border-green-500/30 bg-green-500/10 text-green-400"
-                              : "border-border text-muted-foreground"
-                          }`}
-                        >
-                          {getStatusLabel(task.status)}
-                        </span>
-                        <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">
-                          {getPriorityLabel(task.priority)}
-                        </span>
-                      </div>
-
-                      {task.description && (
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          {task.description}
-                        </p>
-                      )}
-
-                      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-                        <span>👤 {getProfileName(task.assigned_to)}</span>
-                        <span>
-                          📅{" "}
-                          {task.due_date
-                            ? formatDate(task.due_date)
-                            : "Sin fecha límite"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleCompleteTask(task)}
-                        disabled={completingId === task.id}
-                        className={completed ? btnGhost : btn}
-                      >
-                        {completingId === task.id
-                          ? "Actualizando..."
-                          : completed
-                            ? "Reabrir"
-                            : "Completar"}
-                      </button>
-                      {role === "admin" && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTask(task)}
-                          className="rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-400 transition hover:bg-red-500/10"
-                        >
-                          Eliminar
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] text-left text-sm">
+              <caption className="sr-only">Listado de tareas filtradas</caption>
+              <thead className="bg-background/50 text-xs text-muted-foreground"><tr>
+                {["Asunto","Creador","Responsable","Prioridad","Estado","Vencimiento","Acciones"].map((label) =>
+                  <th scope="col" key={label} className="px-4 py-3">{label}</th>)}
+              </tr></thead>
+              <tbody className="divide-y divide-border">
+                {visibleTasks.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No hay tareas para estos filtros.</td></tr>}
+                {visibleTasks.map((task) => (
+                  <tr key={task.id} className={task.status === "hecha" ? "bg-green-500/5" : "hover:bg-accent/5"}>
+                    <td className="max-w-xs px-4 py-3"><button type="button" className="text-left font-medium text-accent hover:underline" onClick={() => setSelectedId(task.id)}>{task.title}</button></td>
+                    <td className="px-4 py-3">{task.created_by ? getProfileName(task.created_by) : "Sin usuario"}</td>
+                    <td className="px-4 py-3">{getProfileName(task.assigned_to)}</td>
+                    <td className="px-4 py-3">{getPriorityLabel(task.priority)}</td>
+                    <td className="min-w-44 px-4 py-3">{stateControl(task)}</td>
+                    <td className={"whitespace-nowrap px-4 py-3 " + (task.status !== "hecha" && task.due_date && task.due_date < getLocalDateString() ? "text-red-400" : "")}>{formatDate(task.due_date)}</td>
+                    <td className="px-4 py-3"><div className="flex gap-2">
+                      <button type="button" className={btnGhost} disabled={!canUpdate(task) || completingId !== null || saving || loading}
+                        onClick={() => void handleCompleteTask(task)}>{completingId === task.id ? "Actualizando..." : task.status === "hecha" ? "Reabrir" : "Completar"}</button>
+                      {role === "admin" && <button type="button" className={btnGhost} disabled={completingId !== null || saving || loading}
+                        onClick={() => void handleDeleteTask(task)}>Eliminar</button>}
+                    </div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -3035,7 +3248,8 @@ function ModuleHeader({
    DASHBOARD
    ========================================================= */
 
-function Dashboard({ role }: { role: PanelRole }) {
+function Dashboard({ role, userId }: { role: PanelRole; userId: string }) {
+  const [tasksRevision, setTasksRevision] = useState(0);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -3044,7 +3258,7 @@ function Dashboard({ role }: { role: PanelRole }) {
     let mounted = true;
 
     const loadDashboard = async () => {
-      setLoading(true);
+      if (!tasksRevision) setLoading(true);
       setError("");
 
       try {
@@ -3158,7 +3372,7 @@ function Dashboard({ role }: { role: PanelRole }) {
     return () => {
       mounted = false;
     };
-  }, [role]);
+  }, [role, tasksRevision]);
 
   if (loading) {
     return (
@@ -3235,6 +3449,11 @@ function Dashboard({ role }: { role: PanelRole }) {
           description="Oportunidades en seguimiento"
         />
       </div>
+
+      <section className="mt-8" aria-label="Tareas del dashboard">
+        <TasksModule role={role} userId={userId} initialView="calendario"
+          onTasksChanged={() => setTasksRevision((value) => value + 1)} />
+      </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <DashboardSection title="Próximas tareas">
