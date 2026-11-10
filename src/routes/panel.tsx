@@ -6,7 +6,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import type { Session } from "@supabase/supabase-js";
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import {
   clearPasswordRecovery,
@@ -394,16 +394,19 @@ function PanelShell({
     { label: "Dashboard" },
     { label: "Kanban" },
     { label: "Tareas" },
+    { label: "Agenda" },
     { label: "Clientes" },
     { label: "Prospectos" },
     ...(role === "admin" ? [{ label: "Gastos" }] : []),
     ...(role === "admin" ? [{ label: "Actividad" }] : []),
   ];
 
+  const panelWidth = ["Dashboard", "Kanban", "Tareas"].includes(section) ? "w-full" : "max-w-7xl";
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/70 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div className={"mx-auto flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 " + panelWidth}>
           <div className="flex items-center gap-3">
             <img src={logoHorizontal} alt="kvantcode" className="h-10 w-auto max-w-[190px] object-contain" />
             <span className="hidden text-xs tracking-wide text-accent sm:inline">
@@ -411,7 +414,7 @@ function PanelShell({
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-muted-foreground">
               {role}
             </span>
@@ -435,8 +438,8 @@ function PanelShell({
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-7xl">
-        <aside className="hidden min-h-[calc(100vh-73px)] w-64 border-r border-border p-5 md:block">
+      <div className={"mx-auto flex " + panelWidth}>
+        <aside className="hidden min-h-[calc(100vh-73px)] w-52 shrink-0 border-r border-border p-4 md:block 2xl:w-60">
           <nav className="space-y-2">
             {menuItems.map((item) => {
               const active = section === item.label;
@@ -458,7 +461,7 @@ function PanelShell({
           </nav>
         </aside>
 
-        <main className="min-w-0 flex-1 p-6 md:p-8">
+        <main className="min-w-0 flex-1 p-4 sm:p-6 2xl:p-8">
           <nav aria-label="Secciones del panel" className="mb-6 flex gap-2 overflow-x-auto md:hidden">
             {menuItems.map((item) => <button type="button" key={item.label} className={btnGhost}
               aria-current={section === item.label ? "page" : undefined}
@@ -466,6 +469,7 @@ function PanelShell({
           </nav>
           {section === "Kanban" && <TasksModule key="kanban" role={role} userId={userId} initialView="kanban" />}
           {section === "Dashboard" && <Dashboard role={role} userId={userId} />}
+          {section === "Agenda" && <AgendaModule role={role} />}
           {section === "Tareas" && (
             <TasksModule role={role} userId={userId} />
           )}
@@ -487,29 +491,6 @@ function PanelShell({
    MÓDULO TAREAS
    ========================================================= */
 
-function TaskDescription({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className="space-y-1">
-      <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground"
-        style={expanded ? undefined : {
-          display: "-webkit-box",
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}>
-        {text}
-      </p>
-      <button type="button" className="text-xs text-accent underline underline-offset-2"
-        aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}
-        onMouseDown={(event) => event.stopPropagation()}
-        draggable={false}>
-        {expanded ? "Ver menos" : "Ver descripción completa"}
-      </button>
-    </div>
-  );
-}
-
 type PanelTask = {
   id: string;
   title: string;
@@ -523,11 +504,399 @@ type PanelTask = {
   created_at: string;
   updated_at: string;
 };
+type TaskComment = { id: string; task_id: string; author_id: string; content: string; created_at: string; updated_at: string };
+
 const taskStates = [
-  { value: "pendiente", label: "Pendiente" },
-  { value: "en_curso", label: "En curso" },
-  { value: "hecha", label: "Hecha" },
+  { value: "pendiente", label: "Pendiente", badge: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300" },
+  { value: "en_curso", label: "En curso", badge: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300" },
+  { value: "hecha", label: "Hecha", badge: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
 ];
+
+const taskListColumns = [
+  { label: "Asunto", width: "w-[26%]" },
+  { label: "Creador", width: "w-[14%]" },
+  { label: "Responsable", width: "w-[14%]" },
+  { label: "Prioridad", width: "w-[8%]" },
+  { label: "Estado", width: "w-[12%]" },
+  { label: "Vencimiento", width: "w-[11%]" },
+  { label: "Acciones", width: "w-[15%]" },
+];
+
+type TaskAttachment = {
+  id: string;
+  task_id: string;
+  uploaded_by: string;
+  file_name: string;
+  storage_path: string;
+  mime_type: string | null;
+  file_size: number;
+  created_at: string;
+};
+
+type TaskAttachmentInsert = Pick<TaskAttachment, "id" | "task_id" | "file_name" | "storage_path" | "file_size">
+  & Partial<Pick<TaskAttachment, "mime_type">>;
+
+type TaskAttachmentDatabase = {
+  public: {
+    Tables: {
+      task_attachments: {
+        Row: TaskAttachment;
+        Insert: TaskAttachmentInsert;
+        Update: Partial<TaskAttachment>;
+        Relationships: [];
+      };
+    };
+    Views: Record<never, never>;
+    Functions: Record<never, never>;
+  };
+};
+
+// Reuse the authenticated client even when the project's generated types predate this table.
+const attachmentTable = () =>
+  (supabase as unknown as SupabaseClient<TaskAttachmentDatabase>).from("task_attachments");
+const attachmentFields = "id,file_name,storage_path,mime_type,file_size,created_at";
+type TaskAttachmentSummary = Pick<TaskAttachment, "id" | "file_name" | "storage_path" | "mime_type" | "file_size" | "created_at">;
+const maxAttachmentSize = 10 * 1024 * 1024;
+const invalidAttachmentMessage = "Elegí un archivo con nombre, que no esté vacío y que pese hasta 10 MiB.";
+
+function isValidTaskAttachment(file: File) {
+  return file.name.trim().length > 0 && file.size > 0 && file.size <= maxAttachmentSize;
+}
+
+async function saveTaskAttachment(taskId: string, file: File): Promise<TaskAttachmentSummary> {
+  const id = crypto.randomUUID();
+  const storagePath = `tasks/${taskId}/${id}`;
+  const bucket = supabase.storage.from("task-attachments");
+  const { error: uploadError } = await bucket.upload(storagePath, file, {
+    upsert: false,
+    cacheControl: "0",
+    contentType: file.type || "application/octet-stream",
+  });
+  if (uploadError) {
+    console.error("Error subiendo adjunto:", uploadError);
+    throw new Error(`No se confirmó la subida. Si la conexión se interrumpió, revisá ${storagePath} en Storage antes de reintentar.`);
+  }
+
+  const saved = await attachmentTable().insert({
+    id,
+    task_id: taskId,
+    file_name: file.name.trim(),
+    storage_path: storagePath,
+    mime_type: file.type || null,
+    file_size: file.size,
+  }).select(attachmentFields).single();
+
+  let attachment = saved.data;
+  if (saved.error) {
+    console.error("Error registrando adjunto:", saved.error);
+    // Only delete the object after an explicit database rejection.
+    const rejected = saved.status >= 400 && /^(22|23|42)[0-9A-Z]{3}$/.test(saved.error.code);
+    if (rejected) {
+      const { data: removed, error: cleanupError } = await bucket.remove([storagePath]);
+      if (cleanupError || !removed?.length) {
+        console.error("Error limpiando adjunto:", cleanupError);
+        throw new Error(`No se pudo registrar el adjunto. Revisá el archivo ${storagePath} en Storage.`);
+      }
+      throw new Error("No se pudo registrar el adjunto. El archivo subido se retiró de Storage.");
+    }
+
+    const confirmed = await attachmentTable().select(attachmentFields).eq("id", id).maybeSingle();
+    attachment = confirmed.data;
+    if (confirmed.error || !attachment) {
+      throw new Error(`No se pudo confirmar el registro. Volvé a cargar la lista y, si falta el adjunto, revisá ${storagePath} en Storage.`);
+    }
+  }
+
+  if (!attachment) throw new Error("No se recibió el registro del adjunto. Volvé a cargar la lista.");
+  return attachment;
+}
+
+const imageMimeTypes = /^image\/(jpeg|png|gif|webp|avif|bmp|x-ms-bmp)$/i;
+const imageFileExtensions = /\.(jpe?g|png|gif|webp|avif|bmp)$/i;
+
+function canPreviewAttachment(attachment: TaskAttachmentSummary) {
+  const type = attachment.mime_type?.toLowerCase();
+  return imageMimeTypes.test(type ?? "") ||
+    ((!type || type === "application/octet-stream") && imageFileExtensions.test(attachment.file_name));
+}
+
+function TaskAttachmentPreview({ attachment, onDismiss }: {
+  attachment: TaskAttachmentSummary;
+  onDismiss: () => void;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const path = attachment.storage_path;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    dialog.showModal();
+    return () => dialog.close();
+  }, []);
+
+  const closePreview = () => {
+    dialogRef.current?.close();
+    onDismiss();
+  };
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl: string | undefined;
+    void (async () => {
+      try {
+        const { data, error } = await supabase.storage.from("task-attachments").download(path);
+        if (error || !data) throw error ?? new Error("Imagen no disponible.");
+        if (!active) return;
+        if (data.type && data.type !== "application/octet-stream" && !imageMimeTypes.test(data.type)) {
+          setFailed(true);
+          return;
+        }
+        objectUrl = URL.createObjectURL(data);
+        setUrl(objectUrl);
+      } catch {
+        if (active) setFailed(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [path]);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="task-attachment-preview-title"
+      className="fixed inset-0 m-auto max-h-[92dvh] w-11/12 max-w-6xl overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-0 text-foreground shadow-2xl backdrop:bg-black/80"
+      onCancel={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        closePreview();
+      }}
+    >
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+        <div className="min-w-0 flex-1 basis-48">
+          <p className="text-xs text-muted-foreground">Vista previa</p>
+          <h4 id="task-attachment-preview-title" className="font-semibold [overflow-wrap:anywhere]">
+            {attachment.file_name}
+          </h4>
+        </div>
+        <button type="button" className={btnGhost} onClick={closePreview}>Cerrar vista previa</button>
+      </header>
+      <div className="bg-background/40 p-4 text-center">
+        {failed ? (
+          <p role="alert" className="text-sm text-red-400">No se pudo mostrar la imagen. Podés intentar descargarla.</p>
+        ) : url ? (
+          <img src={url} alt={attachment.file_name} onError={() => setFailed(true)}
+            className="mx-auto max-h-[76dvh] max-w-full rounded-lg object-contain" />
+        ) : (
+          <p role="status" className="text-sm text-muted-foreground">Cargando vista previa…</p>
+        )}
+      </div>
+    </dialog>
+  );
+}
+
+function TaskAttachments({ taskId, onWriteBusyChange }: {
+  taskId: string;
+  onWriteBusyChange: (busy: boolean) => void;
+}) {
+  const [attachments, setAttachments] = useState<TaskAttachmentSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reload, setReload] = useState(0);
+  const [file, setFile] = useState<File | null>(null);
+  const [operation, setOperation] = useState<"upload" | "download" | "delete" | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const previewAttachment = attachments.find((attachment) => attachment.id === previewId);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const operationLock = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+
+    void (async () => {
+      try {
+        const { data, error: queryError } = await attachmentTable()
+          .select(attachmentFields).eq("task_id", taskId).order("created_at", { ascending: false });
+        if (queryError) throw queryError;
+        if (active) setAttachments(data ?? []);
+      } catch (queryError) {
+        if (active) setLoadError(true);
+        console.error("Error cargando adjuntos:", queryError);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => { active = false; };
+  }, [taskId, reload]);
+
+  const uploadAttachment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!file || loading || operationLock.current) return;
+    setError("");
+    setNotice("");
+
+    if (!isValidTaskAttachment(file)) {
+      setError(invalidAttachmentMessage);
+      return;
+    }
+
+    operationLock.current = true;
+    setOperation("upload");
+    onWriteBusyChange(true);
+    try {
+      const uploaded = await saveTaskAttachment(taskId, file);
+      setAttachments((current) => [uploaded, ...current.filter((item) => item.id !== uploaded.id)]);
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setNotice("Adjunto subido.");
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "No se pudo subir el archivo.");
+    } finally {
+      operationLock.current = false;
+      setOperation(null);
+      onWriteBusyChange(false);
+    }
+  };
+
+  const downloadAttachment = async (attachment: TaskAttachmentSummary) => {
+    if (operationLock.current) return;
+    operationLock.current = true;
+    setOperation("download");
+    setError("");
+    setNotice("");
+    try {
+      const { data, error: downloadError } = await supabase.storage
+        .from("task-attachments").download(attachment.storage_path);
+      if (downloadError || !data) throw downloadError ?? new Error("Archivo no disponible.");
+
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = attachment.file_name;
+      document.body.append(link);
+      try {
+        link.click();
+      } finally {
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      }
+    } catch (downloadError) {
+      console.error("Error descargando adjunto:", downloadError);
+      setError("No se pudo descargar el archivo. Revisá la conexión y los permisos de Storage.");
+    } finally {
+      operationLock.current = false;
+      setOperation(null);
+    }
+  };
+
+  const deleteAttachment = async (attachment: TaskAttachmentSummary) => {
+    if (loading || operationLock.current) return;
+    if (!window.confirm(`¿Eliminar definitivamente el adjunto “${attachment.file_name}”?`)) return;
+
+    operationLock.current = true;
+    setOperation("delete");
+    onWriteBusyChange(true);
+    setPreviewId((current) => current === attachment.id ? null : current);
+    setError("");
+    setNotice("");
+    try {
+      const { error: storageError } = await supabase.storage
+        .from("task-attachments").remove([attachment.storage_path]);
+      if (storageError) {
+        console.error("Error eliminando archivo de Storage:", storageError);
+        throw new Error("No se pudo confirmar el borrado del archivo. Volvé a intentar.");
+      }
+
+      // A repeat can reach this step after the object was removed on the first attempt.
+      const { error: recordError } = await attachmentTable().delete()
+        .eq("task_id", taskId).eq("id", attachment.id);
+      if (recordError) {
+        console.error("Error eliminando el registro del adjunto:", recordError);
+        throw new Error("Se eliminó el archivo, pero quedó su registro. Volvé a elegir Eliminar para terminar.");
+      }
+
+      setAttachments((current) => current.filter((item) => item.id !== attachment.id));
+      setNotice("Adjunto eliminado.");
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No se pudo eliminar el adjunto.");
+    } finally {
+      operationLock.current = false;
+      setOperation(null);
+      onWriteBusyChange(false);
+    }
+  };
+
+  return (
+    <section aria-labelledby="task-attachments-title" className="mt-6 min-w-0 border-t border-border pt-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 id="task-attachments-title" className="font-semibold">Adjuntos privados ({attachments.length})</h3>
+        <button type="button" className={btnGhost} disabled={loading || operation !== null}
+          onClick={() => setReload((value) => value + 1)}>Actualizar adjuntos</button>
+      </div>
+      {loading && <p role="status" className="text-sm text-muted-foreground">Cargando adjuntos…</p>}
+      {loadError && <p role="alert" className="text-sm text-red-400">No se pudo cargar la lista de adjuntos.</p>}
+      {!loading && !loadError && attachments.length === 0 && (
+        <p className="text-sm text-muted-foreground">Todavía no hay archivos adjuntos.</p>
+      )}
+      <ul className="space-y-2">
+        {attachments.map((attachment) => (
+          <li key={attachment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
+            <div className="min-w-0 flex-1 basis-52 [overflow-wrap:anywhere]">
+              <p className="text-sm font-medium">{attachment.file_name}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Intl.NumberFormat("es-AR").format(attachment.file_size)} bytes · {formatDateTime(attachment.created_at)}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {canPreviewAttachment(attachment) && (
+                <button type="button" className={btnGhost} aria-haspopup="dialog"
+                  aria-label={"Previsualizar " + attachment.file_name}
+                  disabled={loading || operation !== null}
+                  onClick={(event) => {
+                    event.currentTarget.focus({ preventScroll: true });
+                    setPreviewId(attachment.id);
+                  }}>Previsualizar</button>
+              )}
+              <button type="button" className={btnGhost} aria-label={"Descargar " + attachment.file_name}
+                disabled={operation !== null} onClick={() => void downloadAttachment(attachment)}>Descargar</button>
+              <button type="button" className={btnGhost} aria-label={"Eliminar " + attachment.file_name}
+                disabled={loading || operation !== null} onClick={() => void deleteAttachment(attachment)}>Eliminar</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={uploadAttachment}>
+        <label className="block min-w-0 flex-1 basis-60 text-sm">
+          Seleccioná un archivo (hasta 10 MiB)
+          <input ref={fileInputRef} type="file" className={input + " mt-1"} disabled={operation !== null}
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)} required />
+        </label>
+        <button type="submit" className={btn} disabled={!file || loading || operation !== null}>
+          {operation === "upload" ? "Subiendo…" : "Subir archivo"}
+        </button>
+      </form>
+      {error && <p role="alert" className="mt-3 text-sm text-red-400 [overflow-wrap:anywhere]">{error}</p>}
+      <p role="status" className="mt-2 text-sm text-muted-foreground">
+        {operation === "download" ? "Descargando…" : operation === "delete" ? "Eliminando adjunto…" : notice}
+      </p>
+      {previewAttachment && (
+        <TaskAttachmentPreview key={previewAttachment.storage_path} attachment={previewAttachment}
+          onDismiss={() => setPreviewId(null)} />
+      )}
+    </section>
+  );
+}
+
 
 function TasksModule({
   role,
@@ -555,15 +924,28 @@ function TasksModule({
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [sortBy, setSortBy] = useState("due");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const detailRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    if (selectedId) detailRef.current?.focus();
-  }, [selectedId]);
+  const detailRef = useRef<HTMLDialogElement | null>(null);
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const canUpdate = (task: PanelTask) => role === "admin" || task.assigned_to === userId;
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPriority, setEditPriority] = useState("media");
+  const [editStatus, setEditStatus] = useState("pendiente");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editAssignee, setEditAssignee] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [comments, setComments] = useState<TaskComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [commentSaving, setCommentSaving] = useState(false);
+  const [attachmentWriting, setAttachmentWriting] = useState(false);
+  const newTaskFileRef = useRef<HTMLInputElement | null>(null);
+
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -614,6 +996,79 @@ function TasksModule({
     loadTasks();
   }, []);
 
+  useEffect(() => {
+    setEditing(false);
+    setComments([]);
+    setCommentsError("");
+    setCommentText("");
+    if (!selectedId) return;
+    let active = true;
+    setCommentsLoading(true);
+    void (async () => {
+      const { data, error: queryError } = await supabase.from("task_comments")
+        .select("id,task_id,author_id,content,created_at,updated_at")
+        .eq("task_id", selectedId).order("created_at", { ascending: true });
+      if (!active) return;
+      if (queryError) setCommentsError(queryError.message);
+      else setComments((data ?? []) as TaskComment[]);
+      setCommentsLoading(false);
+    })();
+    return () => { active = false; };
+  }, [selectedId]);
+
+  const openTaskEdit = (task: PanelTask) => {
+    if (!canUpdate(task)) return;
+    setEditTitle(task.title);
+    setEditDescription(task.description ?? "");
+    setEditPriority(task.priority);
+    setEditStatus(task.status);
+    setEditDueDate(task.due_date ?? "");
+    setEditAssignee(task.assigned_to ?? "");
+    setEditing(true);
+    setError("");
+  };
+
+  const saveTaskEdit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const task = tasks.find(item => item.id === selectedId);
+    if (!task || !canUpdate(task) || !editTitle.trim() || lock.current) return;
+    lock.current = true;
+    setEditSaving(true);
+    setError("");
+    try {
+      const { data, error: updateError } = await supabase.from("tasks").update({
+        title: editTitle.trim(), description: editDescription.trim() || null,
+        priority: editPriority, status: editStatus, due_date: editDueDate || null,
+        ...(role === "admin" ? { assigned_to: editAssignee || null } : {}),
+      }).eq("id", task.id)
+        .select("id,title,description,status,priority,due_date,assigned_to,created_by,completed_at,created_at,updated_at").single();
+      if (updateError) throw updateError;
+      setTasks(current => current.map(item => item.id === task.id ? data as PanelTask : item));
+      setEditing(false);
+      setNotice("Tarea actualizada correctamente.");
+      onTasksChanged?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar la tarea.");
+    } finally { lock.current = false; setEditSaving(false); }
+  };
+
+  const addTaskComment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedId || !commentText.trim() || commentSaving) return;
+    setCommentSaving(true);
+    setCommentsError("");
+    try {
+      const { data, error: insertError } = await supabase.from("task_comments")
+        .insert({ task_id: selectedId, author_id: userId, content: commentText.trim() })
+        .select("id,task_id,author_id,content,created_at,updated_at").single();
+      if (insertError) throw insertError;
+      setComments(current => [...current, data as TaskComment]);
+      setCommentText("");
+    } catch (err) {
+      setCommentsError(err instanceof Error ? err.message : "No se pudo agregar la nota.");
+    } finally { setCommentSaving(false); }
+  };
+
   const resetForm = () => {
     setTitle("");
     setDescription("");
@@ -621,6 +1076,10 @@ function TasksModule({
     setStatus("pendiente");
     setDueDate("");
     setAssignedTo(role === "staff" ? userId : "");
+    if (newTaskFileRef.current) {
+      newTaskFileRef.current.value = "";
+      newTaskFileRef.current.setCustomValidity("");
+    }
   };
 
   const handleOpenForm = () => {
@@ -645,15 +1104,22 @@ function TasksModule({
     }
 
     if (lock.current || loading) return;
+    const attachment = role === "admin" ? newTaskFileRef.current?.files?.[0] : undefined;
+    if (attachment && !isValidTaskAttachment(attachment)) {
+      setError(invalidAttachmentMessage);
+      return;
+    }
+
     lock.current = true;
     setSaving(true);
     setError("");
+    setNotice("");
 
     try {
       const finalAssignedTo =
         role === "staff" ? userId : assignedTo || null;
 
-      const { error: insertError } = await supabase.from("tasks").insert({
+      const insertTask = supabase.from("tasks").insert({
         title: title.trim(),
         description: description.trim() || null,
         status,
@@ -663,11 +1129,30 @@ function TasksModule({
         created_by: userId,
       });
 
+      const { data, error: insertError } = await (attachment ? insertTask.select("id").single() : insertTask);
       if (insertError) throw insertError;
+
+      const taskId = data?.id;
+      let attachmentError = "";
+      if (attachment) {
+        try {
+          if (!taskId) throw new Error("No se recibió el identificador de la tarea.");
+          await saveTaskAttachment(taskId, attachment);
+        } catch (uploadError) {
+          console.error("Error adjuntando archivo a la nueva tarea:", uploadError);
+          attachmentError = uploadError instanceof Error ? uploadError.message : "No se pudo subir el archivo.";
+        }
+      }
 
       setShowForm(false);
       resetForm();
       await loadTasks();
+      if (attachmentError) {
+        setError("La tarea se guardó. Revisá sus adjuntos antes de volver a subir el archivo. " + attachmentError);
+        if (taskId) setSelectedId(taskId);
+      } else if (attachment) {
+        setNotice("Tarea guardada con su adjunto.");
+      }
       onTasksChanged?.();
     } catch (createError) {
       console.error("Error creando tarea:", createError);
@@ -783,6 +1268,24 @@ function TasksModule({
     return (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || a.title.localeCompare(b.title, "es");
   });
   const selectedTask = tasks.find((task) => task.id === selectedId);
+  const detailTaskId = selectedTask?.id;
+  const detailState = taskStates.find((state) => state.value === selectedTask?.status);
+  const detailBusy = saving || editSaving || commentSaving || attachmentWriting || completingId !== null;
+
+  useEffect(() => {
+    const dialog = detailRef.current;
+    if (!detailTaskId || !dialog) return;
+    dialog.showModal();
+    return () => dialog.close();
+  }, [detailTaskId]);
+
+  const closeTaskDetail = () => {
+    if (detailBusy) return;
+    detailRef.current?.close();
+    setSelectedId(null);
+    setError("");
+    setNotice("");
+  };
   const monthLabel = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(month);
   const offset = (month.getDay() + 6) % 7;
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
@@ -790,16 +1293,47 @@ function TasksModule({
     new Date(month.getFullYear(), month.getMonth(), index - offset + 1));
   const withoutDate = visibleTasks.filter((task) => !task.due_date);
 
-  const stateControl = (task: PanelTask) => (
+  const stateControl = (task: PanelTask, compact = false) => (
     <label className="block text-xs text-muted-foreground">
-      Estado de {task.title}
-      <select className={input + " mt-1"} value={task.status}
+      <span className={compact ? "sr-only" : undefined}>Estado de {task.title}</span>
+      <select className={input + (compact ? " px-2" : " mt-1")} value={task.status}
         disabled={!canUpdate(task) || saving || loading || completingId !== null}
         onChange={(event) => void handleStatusChange(task, event.target.value)}>
         {taskStates.map((state) => <option key={state.value} value={state.value}>{state.label}</option>)}
       </select>
       {!canUpdate(task) && <span className="mt-1 block">Solo lectura: no está asignada a vos.</span>}
     </label>
+  );
+
+  const taskTitle = (task: PanelTask) => (
+    <button type="button" className="text-left text-base font-semibold leading-snug text-accent [overflow-wrap:anywhere] hover:underline"
+      onClick={() => setSelectedId(task.id)}>{task.title}</button>
+  );
+
+  const taskDueDate = (task: PanelTask) => {
+    const overdue = task.status !== "hecha" && task.due_date && task.due_date < getLocalDateString();
+    return <span className={overdue ? "text-red-400" : undefined}>{formatDate(task.due_date)}</span>;
+  };
+
+  const taskActions = (task: PanelTask) => (
+    <div className="flex flex-wrap gap-2">
+      <button type="button" className={btnGhost} disabled={!canUpdate(task) || completingId !== null || saving || loading}
+        onClick={() => void handleCompleteTask(task)}>{completingId === task.id ? "Actualizando..." : task.status === "hecha" ? "Reabrir" : "Completar"}</button>
+      {role === "admin" && <button type="button" className={btnGhost} disabled={completingId !== null || saving || loading}
+        onClick={() => void handleDeleteTask(task)}>Eliminar</button>}
+    </div>
+  );
+
+  const taskFeedback = (
+    <>
+      {error && (
+        <div role="alert" className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
+
+      <p role="status" aria-live="polite" className="mb-3 text-sm">{notice}</p>
+    </>
   );
 
   return (
@@ -814,13 +1348,7 @@ function TasksModule({
       actionLabel="Nueva tarea"
       onAction={handleOpenForm}
     >
-      {error && (
-        <div role="alert" className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
-        </div>
-      )}
-
-      <p role="status" aria-live="polite" className="mb-3 text-sm">{notice}</p>
+      {!selectedTask && taskFeedback}
       <div role="group" aria-label="Vista de tareas" className="mb-5 flex gap-2">
         <button type="button" className={btnGhost} aria-pressed={view === "lista"} onClick={() => setView("lista")}>Lista</button>
         <button type="button" className={btnGhost} aria-pressed={view === "kanban"} onClick={() => setView("kanban")}>Kanban</button>
@@ -856,22 +1384,74 @@ function TasksModule({
         <button type="button" className={btnGhost} onClick={() => { setSearch(""); setStatusFilter(""); setPriorityFilter(""); setAssigneeFilter(""); setSortBy("due"); }}>Limpiar filtros</button>
       </div>
       {selectedTask && (
-        <section ref={detailRef} tabIndex={-1} aria-label="Detalle de tarea" className="mb-5 rounded-xl border border-accent/40 bg-card p-5">
-          <div className="flex items-start justify-between gap-4">
-            <h2 className="break-words text-lg font-semibold">{selectedTask.title}</h2>
-            <button type="button" className={btnGhost} onClick={() => setSelectedId(null)}>Cerrar detalle</button>
+        <dialog
+          ref={detailRef}
+          aria-labelledby="task-detail-title"
+          onCancel={(event) => {
+            event.preventDefault();
+            closeTaskDetail();
+          }}
+          className="fixed inset-0 m-auto max-h-[90dvh] w-11/12 max-w-5xl overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-0 text-foreground shadow-2xl backdrop:bg-black/70"
+        >
+          <div className="p-4 sm:p-6">
+            <header className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
+              <div className="min-w-0 flex-1 basis-60">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Detalle de tarea</p>
+                <h2 id="task-detail-title" className="break-words text-2xl font-semibold">{selectedTask.title}</h2>
+                <span className={"mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold " + (detailState?.badge ?? "border-border text-muted-foreground")}>
+                  {detailState?.label ?? "Estado desconocido"}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className={btnGhost} disabled={detailBusy} onClick={closeTaskDetail}>Cerrar detalle</button>
+                {canUpdate(selectedTask) && !editing && <button type="button" className={btn} onClick={() => openTaskEdit(selectedTask)}>Editar tarea</button>}
+              </div>
+            </header>
+            {taskFeedback}
+            <div className="grid items-start gap-6 lg:grid-cols-2">
+              <section aria-label="Datos de la tarea" className="min-w-0">
+                {editing ? (
+                  <form className="space-y-4" onSubmit={saveTaskEdit}>
+                    <label className="block text-sm">Título *<input className={input + " mt-1"} value={editTitle} onChange={e => setEditTitle(e.target.value)} required /></label>
+                    <label className="block text-sm">Descripción<textarea className={input + " mt-1 min-h-28"} value={editDescription} onChange={e => setEditDescription(e.target.value)} /></label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="block text-sm">Prioridad<select className={input + " mt-1"} value={editPriority} onChange={e => setEditPriority(e.target.value)}>{["baja","media","alta","urgente"].map(v => <option key={v} value={v}>{getPriorityLabel(v)}</option>)}</select></label>
+                      <label className="block text-sm">Estado<select className={input + " mt-1"} value={editStatus} onChange={e => setEditStatus(e.target.value)}>{taskStates.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}</select></label>
+                      <label className="block text-sm">Vencimiento<input type="date" lang="es-AR" className={input + " mt-1"} value={editDueDate} onChange={e => setEditDueDate(e.target.value)} /></label>
+                      <label className="block text-sm">Responsable{role === "admin" ? <select className={input + " mt-1"} value={editAssignee} onChange={e => setEditAssignee(e.target.value)}><option value="">Sin asignar</option>{profiles.map(p => <option key={p.id} value={p.id}>{p.full_name || p.email || "Usuario"}</option>)}</select> : <span className="mt-1 block">{getProfileName(selectedTask.assigned_to)}</span>}</label>
+                    </div>
+                    <div className="flex flex-wrap gap-2"><button className={btn} type="submit" disabled={editSaving || !editTitle.trim()}>{editSaving ? "Guardando..." : "Guardar cambios"}</button><button className={btnGhost} type="button" disabled={editSaving} onClick={() => setEditing(false)}>Cancelar</button></div>
+                  </form>
+                ) : (
+                  <>
+                    <h3 className="mb-2 font-semibold">Descripción</h3>
+                    <p className="whitespace-pre-wrap break-words rounded-lg border border-border bg-background/40 p-4 text-sm">{selectedTask.description || "Sin descripción"}</p>
+                    <dl className="my-4 grid gap-3 break-words rounded-lg border border-border p-4 text-sm sm:grid-cols-2">
+                      <div><dt className="text-muted-foreground">Creador</dt><dd>{getProfileName(selectedTask.created_by)}</dd></div>
+                      <div><dt className="text-muted-foreground">Responsable</dt><dd>{getProfileName(selectedTask.assigned_to)}</dd></div>
+                      <div><dt className="text-muted-foreground">Prioridad</dt><dd>{getPriorityLabel(selectedTask.priority)}</dd></div>
+                      <div><dt className="text-muted-foreground">Vencimiento</dt><dd>{formatDate(selectedTask.due_date)}</dd></div>
+                      <div><dt className="text-muted-foreground">Creada</dt><dd>{formatDateTime(selectedTask.created_at)}</dd></div>
+                      <div><dt className="text-muted-foreground">Finalizada</dt><dd>{selectedTask.completed_at ? formatDateTime(selectedTask.completed_at) : "Sin finalizar"}</dd></div>
+                    </dl>
+                    {stateControl(selectedTask)}
+                  </>
+                )}
+              </section>
+              <section aria-labelledby="task-notes-title" className="min-w-0 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                <h3 id="task-notes-title" className="mb-3 font-semibold">Historial de notas ({comments.length})</h3>
+                {commentsLoading && <p className="text-sm text-muted-foreground">Cargando notas...</p>}
+                {commentsError && <p role="alert" className="mb-3 text-sm text-red-400">{commentsError}</p>}
+                {!commentsLoading && comments.length === 0 && <p className="mb-4 text-sm text-muted-foreground">Todavía no hay notas para esta tarea.</p>}
+                <div className="space-y-3">{comments.map(comment => <article key={comment.id} className="rounded-lg border border-border p-3"><div className="mb-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><span>{getProfileName(comment.author_id)}</span><time dateTime={comment.created_at}>{formatDateTime(comment.created_at)}</time></div><p className="whitespace-pre-wrap break-words text-sm">{comment.content}</p></article>)}</div>
+                <form className="mt-4 space-y-3" onSubmit={addTaskComment}><label className="block text-sm">Nueva nota<textarea className={input + " mt-1 min-h-24"} value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Escribí una actualización o comentario..." required /></label><button className={btn} type="submit" disabled={commentSaving || commentsLoading || !commentText.trim()}>{commentSaving ? "Publicando..." : "Agregar nota"}</button></form>
+              </section>
+            </div>
+            {role === "admin" && (
+              <TaskAttachments key={selectedTask.id} taskId={selectedTask.id} onWriteBusyChange={setAttachmentWriting} />
+            )}
           </div>
-          <p className="mt-3 whitespace-pre-wrap break-words text-sm">{selectedTask.description || "Sin descripción"}</p>
-          <dl className="my-4 grid gap-3 text-sm sm:grid-cols-2">
-            <div><dt className="text-muted-foreground">Creador</dt><dd>{getProfileName(selectedTask.created_by)}</dd></div>
-            <div><dt className="text-muted-foreground">Responsable</dt><dd>{getProfileName(selectedTask.assigned_to)}</dd></div>
-            <div><dt className="text-muted-foreground">Prioridad</dt><dd>{getPriorityLabel(selectedTask.priority)}</dd></div>
-            <div><dt className="text-muted-foreground">Vencimiento</dt><dd>{formatDate(selectedTask.due_date)}</dd></div>
-            <div><dt className="text-muted-foreground">Creada</dt><dd>{formatDateTime(selectedTask.created_at)}</dd></div>
-            <div><dt className="text-muted-foreground">Finalizada</dt><dd>{selectedTask.completed_at ? formatDateTime(selectedTask.completed_at) : "Sin finalizar"}</dd></div>
-          </dl>
-          {stateControl(selectedTask)}
-        </section>
+        </dialog>
       )}
 
       {showForm && (
@@ -981,6 +1561,19 @@ function TasksModule({
               />
             </div>
           </div>
+
+          {role === "admin" && (
+            <label className="mt-5 block text-sm">
+              <span className="font-medium">Adjunto privado (opcional, hasta 10 MiB)</span>
+              <input type="file" ref={newTaskFileRef} disabled={saving} className={input + " mt-2"}
+                onChange={(event) => {
+                  const field = event.currentTarget;
+                  const file = field.files?.[0];
+                  field.setCustomValidity(file && !isValidTaskAttachment(file) ? invalidAttachmentMessage : "");
+                  if (!field.validity.valid) field.reportValidity();
+                }} />
+            </label>
+          )}
 
           <div className="mt-6 flex flex-wrap justify-end gap-3">
             <button
@@ -1092,7 +1685,11 @@ function TasksModule({
                           aria-busy={completingId === task.id}
                           className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-4">
                           <h4 className="break-words font-semibold"><button type="button" className="text-left hover:text-accent" onClick={() => setSelectedId(task.id)}>{task.title}</button></h4>
-                          {task.description && <TaskDescription text={task.description} />}
+                          {task.description && (
+                            <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm text-muted-foreground">
+                              {task.description}
+                            </p>
+                          )}
                           <p className="text-xs text-accent">Prioridad: {getPriorityLabel(task.priority)}</p>
                           <p className="break-words text-xs text-muted-foreground">Responsable: {getProfileName(task.assigned_to)}</p>
                           <p className="text-xs text-muted-foreground">Vencimiento: {formatDate(task.due_date)}</p>
@@ -1126,34 +1723,58 @@ function TasksModule({
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-left text-sm">
+          <>
+            <table className="hidden w-full table-fixed text-left text-sm xl:table">
               <caption className="sr-only">Listado de tareas filtradas</caption>
-              <thead className="bg-background/50 text-xs text-muted-foreground"><tr>
-                {["Asunto","Creador","Responsable","Prioridad","Estado","Vencimiento","Acciones"].map((label) =>
-                  <th scope="col" key={label} className="px-4 py-3">{label}</th>)}
-              </tr></thead>
+              <thead className="bg-background/50 text-xs text-muted-foreground">
+                <tr>
+                  {taskListColumns.map(({ label, width }) => (
+                    <th key={label} scope="col" className={"px-3 py-3 " + width}>{label}</th>
+                  ))}
+                </tr>
+              </thead>
               <tbody className="divide-y divide-border">
-                {visibleTasks.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No hay tareas para estos filtros.</td></tr>}
+                {visibleTasks.length === 0 && <tr><td colSpan={taskListColumns.length} className="p-8 text-center text-muted-foreground">No hay tareas para estos filtros.</td></tr>}
                 {visibleTasks.map((task) => (
                   <tr key={task.id} className={task.status === "hecha" ? "bg-green-500/5" : "hover:bg-accent/5"}>
-                    <td className="max-w-xs px-4 py-3"><button type="button" className="text-left font-medium text-accent hover:underline" onClick={() => setSelectedId(task.id)}>{task.title}</button></td>
-                    <td className="px-4 py-3">{task.created_by ? getProfileName(task.created_by) : "Sin usuario"}</td>
-                    <td className="px-4 py-3">{getProfileName(task.assigned_to)}</td>
-                    <td className="px-4 py-3">{getPriorityLabel(task.priority)}</td>
-                    <td className="min-w-44 px-4 py-3">{stateControl(task)}</td>
-                    <td className={"whitespace-nowrap px-4 py-3 " + (task.status !== "hecha" && task.due_date && task.due_date < getLocalDateString() ? "text-red-400" : "")}>{formatDate(task.due_date)}</td>
-                    <td className="px-4 py-3"><div className="flex gap-2">
-                      <button type="button" className={btnGhost} disabled={!canUpdate(task) || completingId !== null || saving || loading}
-                        onClick={() => void handleCompleteTask(task)}>{completingId === task.id ? "Actualizando..." : task.status === "hecha" ? "Reabrir" : "Completar"}</button>
-                      {role === "admin" && <button type="button" className={btnGhost} disabled={completingId !== null || saving || loading}
-                        onClick={() => void handleDeleteTask(task)}>Eliminar</button>}
-                    </div></td>
+                    <td className="px-3 py-4">{taskTitle(task)}</td>
+                    <td className="px-3 py-4 [overflow-wrap:anywhere]">{task.created_by ? getProfileName(task.created_by) : "Sin usuario"}</td>
+                    <td className="px-3 py-4 [overflow-wrap:anywhere]">{getProfileName(task.assigned_to)}</td>
+                    <td className="px-3 py-4">{getPriorityLabel(task.priority)}</td>
+                    <td className="px-3 py-4">{stateControl(task, true)}</td>
+                    <td className="px-3 py-4 [overflow-wrap:anywhere]">{taskDueDate(task)}</td>
+                    <td className="px-3 py-4">{taskActions(task)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+            <div className="xl:hidden">
+              {visibleTasks.length === 0 ? (
+                <p className="p-8 text-center text-sm text-muted-foreground">No hay tareas para estos filtros.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {visibleTasks.map((task) => (
+                    <li key={task.id} className="space-y-4 p-4">
+                      <h3>{taskTitle(task)}</h3>
+                      <dl className="grid gap-3 text-sm [overflow-wrap:anywhere] sm:grid-cols-2">
+                        <div><dt className="text-muted-foreground">Creador</dt><dd>{task.created_by ? getProfileName(task.created_by) : "Sin usuario"}</dd></div>
+                        <div><dt className="text-muted-foreground">Responsable</dt><dd>{getProfileName(task.assigned_to)}</dd></div>
+                        <div><dt className="text-muted-foreground">Prioridad</dt><dd>{getPriorityLabel(task.priority)}</dd></div>
+                        <div><dt className="text-muted-foreground">Vencimiento</dt><dd>{taskDueDate(task)}</dd></div>
+                      </dl>
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div className="w-40 max-w-full">
+                          <p className="mb-1 text-xs text-muted-foreground">Estado</p>
+                          {stateControl(task, true)}
+                        </div>
+                        {taskActions(task)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
         )}
       </div>
     </ModuleHeader>
@@ -3207,6 +3828,359 @@ function PlaceholderModule({
     </ModuleHeader>
   );
 }
+
+type AgendaKind = "socios" | "comercial";
+type AgendaReply = "aceptada" | "rechazada";
+type AgendaResponse = AgendaReply | "pendiente";
+type AgendaContact = { id: string; display_name: string };
+type AgendaMeeting = {
+  id: string;
+  kind: AgendaKind;
+  title: string;
+  details: string | null;
+  starts_at: string;
+  ends_at: string;
+  organizer_name: string;
+  my_response: AgendaResponse | null;
+  attendees: { id: string; name: string; response: AgendaResponse }[] | null;
+};
+
+type AgendaDatabase = {
+  public: {
+    Tables: Record<never, never>;
+    Views: Record<never, never>;
+    Functions: {
+      kvant_agenda_list: { Args: { p_from: string; p_to: string }; Returns: AgendaMeeting[] };
+      kvant_agenda_contacts: { Args: { p_kind: AgendaKind }; Returns: AgendaContact[] };
+      kvant_agenda_create: {
+        Args: {
+          p_request_id: string;
+          p_kind: AgendaKind;
+          p_title: string;
+          p_details: string;
+          p_starts_at: string;
+          p_ends_at: string;
+          p_invitees: string[];
+        };
+        Returns: string;
+      };
+      kvant_agenda_respond: { Args: { p_meeting_id: string; p_response: AgendaReply }; Returns: undefined };
+    };
+  };
+};
+
+const agendaClient = supabase as unknown as SupabaseClient<AgendaDatabase>;
+const agendaKinds: Record<AgendaKind, string> = { socios: "Socios", comercial: "Comercial" };
+const agendaResponses: Record<AgendaResponse, string> = {
+  pendiente: "Pendiente", aceptada: "Aceptada", rechazada: "Rechazada",
+};
+const agendaMonthFormat = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
+const agendaDateFormat = new Intl.DateTimeFormat("es-AR", {
+  weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+});
+
+function agendaMonthStart(date = new Date(), offset = 0) {
+  return new Date(date.getFullYear(), date.getMonth() + offset, 1);
+}
+
+function AgendaCreateForm({ onCreated, onCancel }: {
+  onCreated: (start: Date) => void;
+  onCancel: () => void;
+}) {
+  const [kind, setKind] = useState<AgendaKind>("socios");
+  const [contacts, setContacts] = useState<AgendaContact[]>([]);
+  const [invitees, setInvitees] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [contactsFailed, setContactsFailed] = useState(false);
+  const [reload, setReload] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const saveLock = useRef(false);
+  const request = useRef<{ key: string; id: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setContactsFailed(false);
+    void (async () => {
+      try {
+        const { data, error: queryError } = await agendaClient.rpc("kvant_agenda_contacts", { p_kind: kind });
+        if (queryError) throw queryError;
+        if (active) setContacts(data ?? []);
+      } catch (queryError) {
+        console.error("Error cargando contactos de agenda:", queryError);
+        if (active) setContactsFailed(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [kind, reload]);
+
+  const create = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saveLock.current || loading || contactsFailed) return;
+    const fields = new FormData(event.currentTarget);
+    const title = String(fields.get("title") ?? "").trim();
+    const startsAt = new Date(String(fields.get("start") ?? ""));
+    const endsAt = new Date(String(fields.get("end") ?? ""));
+    if (!title || !(endsAt > startsAt) || invitees.length === 0) {
+      setError("Ingresá un título, elegí un final posterior al inicio y seleccioná al menos un invitado.");
+      return;
+    }
+
+    saveLock.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        p_kind: kind,
+        p_title: title,
+        p_details: String(fields.get("details") ?? "").trim(),
+        p_starts_at: startsAt.toISOString(),
+        p_ends_at: endsAt.toISOString(),
+        p_invitees: [...invitees].sort(),
+      };
+      const key = JSON.stringify(payload);
+      if (request.current?.key !== key) request.current = { key, id: crypto.randomUUID() };
+      const { error: createError } = await agendaClient.rpc("kvant_agenda_create", {
+        ...payload,
+        p_request_id: request.current.id,
+      });
+      if (createError) throw createError;
+      onCreated(startsAt);
+    } catch (createError) {
+      console.error("Error creando reunión:", createError);
+      setError("No se confirmó el guardado. Si se interrumpió la conexión, revisá el mes de la reunión antes de volver a crearla.");
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className="mb-6 rounded-xl border border-border bg-card p-5" onSubmit={create}>
+      <h2 className="mb-4 text-lg font-semibold">Nueva reunión</h2>
+      <fieldset disabled={saving} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm">Título
+            <input name="title" required maxLength={160} className={input + " mt-1"} />
+          </label>
+          <label className="block text-sm">Tipo
+            <select className={input + " mt-1"} value={kind} onChange={(event) => {
+              setLoading(true);
+              setInvitees([]);
+              setKind(event.target.value === "socios" ? "socios" : "comercial");
+            }}>
+              <option value="socios">Socios</option>
+              <option value="comercial">Comercial</option>
+            </select>
+          </label>
+          <label className="block text-sm">Inicio
+            <input type="datetime-local" name="start" required className={input + " mt-1"} />
+          </label>
+          <label className="block text-sm">Fin
+            <input type="datetime-local" name="end" required className={input + " mt-1"} />
+          </label>
+        </div>
+        <label className="block text-sm">Lugar, enlace o detalles
+          <textarea name="details" maxLength={4000} className={input + " mt-1 min-h-20"} />
+        </label>
+        <fieldset className="rounded-lg border border-border p-3">
+          <legend className="px-1 text-sm font-medium">Invitados ({invitees.length}/50)</legend>
+          {loading ? (
+            <p role="status" className="text-sm text-muted-foreground">Cargando personas…</p>
+          ) : contactsFailed ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <p role="alert" className="text-sm text-red-400">No se pudieron cargar los invitados disponibles.</p>
+              <button type="button" className={btnGhost} onClick={() => setReload((value) => value + 1)}>Reintentar</button>
+            </div>
+          ) : contacts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay otros usuarios habilitados para este tipo de reunión.</p>
+          ) : (
+            <div className="grid max-h-48 gap-2 overflow-y-auto sm:grid-cols-2">
+              {contacts.map((contact) => (
+                <label key={contact.id} className="flex min-w-0 items-start gap-2 text-sm [overflow-wrap:anywhere]">
+                  <input type="checkbox" className="mt-1 shrink-0" checked={invitees.includes(contact.id)}
+                    disabled={invitees.length >= 50 && !invitees.includes(contact.id)}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked;
+                      setInvitees((current) => checked ? [...current, contact.id] : current.filter((id) => id !== contact.id));
+                    }} />
+                  {contact.display_name}
+                </label>
+              ))}
+            </div>
+          )}
+        </fieldset>
+      </fieldset>
+      {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button className={btn} type="submit" disabled={saving || loading || contactsFailed || invitees.length === 0}>
+          {saving ? "Guardando…" : "Guardar y enviar invitaciones internas"}
+        </button>
+        <button className={btnGhost} type="button" disabled={saving} onClick={onCancel}>Cancelar</button>
+      </div>
+    </form>
+  );
+}
+
+function AgendaModule({ role }: { role: PanelRole }) {
+  const [month, setMonth] = useState(() => agendaMonthStart());
+  const [meetings, setMeetings] = useState<AgendaMeeting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reload, setReload] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [responding, setResponding] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [replyError, setReplyError] = useState("");
+  const replyLock = useRef(false);
+  const nextMonth = agendaMonthStart(month, 1);
+  const meetingsThisMonth = meetings.filter((meeting) => {
+    const startsAt = new Date(meeting.starts_at);
+    return startsAt >= month && startsAt < nextMonth;
+  });
+  const pendingElsewhere = meetings.filter((meeting) => !meetingsThisMonth.includes(meeting));
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadFailed(false);
+    void (async () => {
+      try {
+        const { data, error } = await agendaClient.rpc("kvant_agenda_list", {
+          p_from: month.toISOString(),
+          p_to: agendaMonthStart(month, 1).toISOString(),
+        });
+        if (error) throw error;
+        if (active) setMeetings(data ?? []);
+      } catch (error) {
+        console.error("Error cargando agenda:", error);
+        if (active) setLoadFailed(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [month, reload]);
+
+  const changeMonth = (value: Date) => {
+    setLoading(true);
+    setMonth(value);
+  };
+
+  const respond = async (meeting: AgendaMeeting, response: AgendaReply) => {
+    if (!meeting.my_response || meeting.my_response === response || replyLock.current) return;
+    replyLock.current = true;
+    setResponding(true);
+    setReplyError("");
+    setNotice("");
+    try {
+      const { error } = await agendaClient.rpc("kvant_agenda_respond", {
+        p_meeting_id: meeting.id, p_response: response,
+      });
+      if (error) throw error;
+      setMeetings((current) => current.map((item) => item.id === meeting.id ? { ...item, my_response: response } : item));
+      setNotice("Respuesta guardada.");
+    } catch (error) {
+      console.error("Error respondiendo invitación:", error);
+      setReplyError("No pudimos confirmar tu respuesta. Actualizá la agenda o volvé a intentar.");
+    } finally {
+      replyLock.current = false;
+      setResponding(false);
+    }
+  };
+
+  return (
+    <ModuleHeader eyebrow="// AGENDA" title="Agenda compartida"
+      description="Reuniones internas e invitaciones. Los horarios se muestran en la zona horaria de tu dispositivo."
+      actionLabel={role === "admin" ? "Nueva reunión" : undefined}
+      onAction={role === "admin" ? () => setCreating(true) : undefined}>
+      {creating && role === "admin" && (
+        <AgendaCreateForm onCancel={() => setCreating(false)} onCreated={(start) => {
+          setCreating(false);
+          changeMonth(agendaMonthStart(start));
+          setNotice("Reunión guardada. Las invitaciones están disponibles en la agenda de cada invitado.");
+        }} />
+      )}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold capitalize">{agendaMonthFormat.format(month)}</h2>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={btnGhost} aria-label="Mes anterior" onClick={() => changeMonth(agendaMonthStart(month, -1))}>Anterior</button>
+          <button type="button" className={btnGhost} onClick={() => changeMonth(agendaMonthStart())}>Hoy</button>
+          <button type="button" className={btnGhost} aria-label="Mes siguiente" onClick={() => changeMonth(agendaMonthStart(month, 1))}>Siguiente</button>
+          <button type="button" className={btnGhost} disabled={loading || responding} onClick={() => setReload((value) => value + 1)}>Actualizar</button>
+        </div>
+      </div>
+      <p role="status" className="text-sm text-muted-foreground">{notice}</p>
+      {replyError && <p role="alert" className="text-sm text-red-400">{replyError}</p>}
+      {!loading && !loadFailed && pendingElsewhere.length > 0 && (
+        <section aria-label="Invitaciones pendientes en otros meses" className="mb-4 rounded-xl border border-accent/30 bg-card p-4">
+          <h3 className="mb-2 font-semibold">Invitaciones pendientes en otros meses</h3>
+          <ul className="space-y-1">
+            {pendingElsewhere.map((meeting) => (
+              <li key={meeting.id}>
+                <button type="button" className="text-left text-sm text-accent [overflow-wrap:anywhere] hover:underline"
+                  onClick={() => changeMonth(agendaMonthStart(new Date(meeting.starts_at)))}>
+                  {meeting.title} · {agendaDateFormat.format(new Date(meeting.starts_at))}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {loading ? (
+        <p role="status" className="py-6 text-sm text-muted-foreground">Cargando reuniones…</p>
+      ) : loadFailed ? (
+        <p role="alert" className="py-6 text-sm text-red-400">No se pudo cargar la agenda. Revisá que la configuración de Supabase esté aplicada y volvé a actualizar.</p>
+      ) : meetingsThisMonth.length === 0 ? (
+        <p className="py-6 text-sm text-muted-foreground">No tenés reuniones en este mes.</p>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {meetingsThisMonth.map((meeting) => (
+            <li key={meeting.id} className="space-y-3 rounded-xl border border-border bg-card p-5 [overflow-wrap:anywhere]">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h3 className="text-lg font-semibold">{meeting.title}</h3>
+                <span className="rounded-full border border-border px-3 py-1 text-xs text-accent">{agendaKinds[meeting.kind]}</span>
+              </div>
+              <p className="text-sm">
+                <time dateTime={meeting.starts_at}>{agendaDateFormat.format(new Date(meeting.starts_at))}</time>
+                {" – "}
+                <time dateTime={meeting.ends_at}>{agendaDateFormat.format(new Date(meeting.ends_at))}</time>
+              </p>
+              <p className="text-sm text-muted-foreground">Organiza {meeting.organizer_name}</p>
+              {meeting.details && <p className="whitespace-pre-wrap text-sm">{meeting.details}</p>}
+              {meeting.my_response && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="mr-2 text-sm">Tu respuesta · {agendaResponses[meeting.my_response]}</span>
+                  <button type="button" className={btnGhost} disabled={responding || meeting.my_response === "aceptada"}
+                    onClick={() => void respond(meeting, "aceptada")}>Aceptar</button>
+                  <button type="button" className={btnGhost} disabled={responding || meeting.my_response === "rechazada"}
+                    onClick={() => void respond(meeting, "rechazada")}>Rechazar</button>
+                </div>
+              )}
+              {meeting.attendees && (
+                <div className="border-t border-border pt-3">
+                  <h4 className="mb-2 text-sm font-semibold">Respuestas de los invitados</h4>
+                  <ul className="space-y-1 text-sm">
+                    {meeting.attendees.map((person) => (
+                      <li key={person.id} className="flex flex-wrap justify-between gap-2">
+                        <span>{person.name}</span>
+                        <span className="text-muted-foreground">{agendaResponses[person.response]}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </ModuleHeader>
+  );
+}
+
 
 function ModuleHeader({
   eyebrow,
