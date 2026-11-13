@@ -83,7 +83,7 @@ const GC=['Mercadería','Insumos','Alquiler','Servicios','Sueldos','Impuestos','
 const fresh=()=>({i:0,q:1,form:false,logo:false,pal:0,ing:18400,egr:6200,fold:{},say:'',ok:1,
 prods:[{n:'Café molido 250 g',c:'Almacén',p:4200,s:12},{n:'Galletas de avena',c:'Panadería',p:2300,s:3},{n:'Mermelada casera',c:'Almacén',p:3100,s:0},{n:'Té de hierbas',c:'Infusiones',p:1900,s:7}],
 ev:[{t:'Visita de proveedor',a:'10:00',b:'11:00'}],notas:['Pedir bolsas de papel'],
-f:{n:'Pan de campo',cat:'Almacén',newc:'',p:'3500',qty:'8',sp:'',gc:'Insumos',gm:'15000',et:'Reunión con cliente',ea:'10:30',eb:'11:30',nota:''}})
+f:{n:'Pan de campo',cat:'Almacén',newc:'',p:'',qty:'',sp:'',gc:'Insumos',gm:'15000',et:'Reunión con cliente',ea:'10:30',eb:'11:30',nota:''}})
 let S=fresh()
 const units=()=>S.prods.reduce((s,p)=>s+p.s,0),cats=()=>[...new Set(S.prods.map(p=>p.c))].sort((a,b)=>a.localeCompare(b,'es'))
 const avail=()=>S.prods.filter(p=>p.s>0),cur=()=>avail().find(p=>p.n===S.f.sp)||avail()[0]
@@ -114,7 +114,7 @@ const ACT={
 form(){S.form=!S.form;if(S.form)S.f.cat='__n'},
 addp(){const f=S.f,n=f.n.trim();if(!n)return say('Falta el nombre del producto. Escríbelo y vuelve a guardar.',0)
 let c=f.cat,note='';if(c==='__n'){const t=f.newc.trim(),m=cats().find(x=>norm(x)===norm(t));if(!t)return say('Escribe el nombre de la categoría nueva.',0);c=m||t;if(m&&m!==t)note=` Ya existía la categoría “${m}”, así que la usamos para no duplicarla.`}
-S.prods.push({n,c,p:+f.p||0,s:Math.max(0,parseInt(f.qty)||0)});S.form=false;f.n='';f.cat=c;say(`Listo: “${n}” ya está en tu lista, ordenada de la A a la Z.${note}`)},
+S.prods.push({n,c,p:+f.p||0,s:Math.max(0,parseInt(f.qty)||0)});S.form=false;f.n='';f.cat=c;f.p='';f.qty='';say(`Listo: “${n}” ya está en tu lista, ordenada de la A a la Z.${note}`)},
 qm(){S.q=Math.max(1,S.q-1)},qp(){const p=cur();if(p)S.q=Math.min(p.s,S.q+1)},
 sell(){const p=cur();if(!p)return;const q=Math.min(S.q,p.s);p.s-=q;S.ing+=q*p.p;S.q=1;say(`Venta registrada: ${q} × ${p.n}. El stock bajó a ${p.s} y ${money(q*p.p)} se sumó a tus ingresos.${p.s?'':' Se agotó, por eso ya no aparece en la lista.'}`)},
 addg(){const m=+S.f.gm;if(!(m>0))return say('El monto debe ser mayor que cero. Escribe cuánto gastaste.',0);S.egr+=m;say(`Gasto guardado en “${S.f.gc}”: ${money(m)}. Tu stock sigue igual: ${units()} unidades.`)},
