@@ -1,0 +1,154 @@
+<!doctype html><html lang="es" data-theme="kvantcode"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Guía de Gestión de Negocio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600&family=Jost:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F2E6D6;--ink:#17302D;--mut:#55655f;--card:#fff;--line:#0f3d3a24;--br:#0F3D3A;--on:#fff;--co:#E0745E;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0c1f1d;--ink:#F2E6D6;--mut:#a9b8b3;--card:#14302d;--line:#f2e6d62b;--br:#EDAEA1;--on:#0c1f1d}}
+:root[data-theme="dark"]{--bg:#0c1f1d;--ink:#F2E6D6;--mut:#a9b8b3;--card:#14302d;--line:#f2e6d62b;--br:#EDAEA1;--on:#0c1f1d}
+*,*::before,*::after{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 'DM Sans',system-ui,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:20}
+h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;line-height:1.1;margin:0 0 12px}
+h1{font-size:clamp(38px,7vw,64px)}h2{font-size:clamp(28px,4vw,38px)}
+.w{max-width:1080px;margin:0 auto;padding:0 20px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);border-bottom:1px solid var(--line)}
+header .w{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}
+.brand{font:600 22px 'Cormorant Garamond',serif}
+nav{display:flex;gap:4px}nav button{font:500 15px Jost,sans-serif;background:none;border:0;color:var(--mut);padding:8px 12px;border-radius:999px;cursor:pointer}nav button[aria-current="page"]{background:var(--br);color:var(--on)}
+button:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var(--co);outline-offset:2px}
+.btn{font:500 16px Jost,sans-serif;background:var(--br);color:var(--on);border:2px solid var(--br);border-radius:12px;padding:12px 20px;cursor:pointer}.btn.s{background:none;color:var(--br)}.btn:disabled{opacity:.4;cursor:default}
+.ic{width:1.2em;height:1.2em;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+section{padding:36px 0 60px}[hidden]{display:none!important}
+.hero{display:grid;gap:36px;align-items:center}.hero p.l{font-size:19px;max-width:34em;color:var(--mut)}
+.chip{display:inline-block;font:500 14px Jost;background:var(--br);color:var(--on);padding:5px 12px;border-radius:999px;margin-bottom:14px}
+.ben{display:grid;gap:16px;margin:24px 0;padding:0;list-style:none}.ben li{display:flex;gap:12px}.ben .ic{width:28px;height:28px;color:var(--co);margin-top:2px}.ben b{display:block;font-family:Jost}
+.tour{display:grid;gap:28px;align-items:start}
+.sh{display:flex;gap:10px;align-items:center;font:500 15px Jost;color:var(--mut);margin-bottom:6px}.sh .ic{width:26px;height:26px;color:var(--co)}
+.tip{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:14px 0}
+.say{border-left:4px solid var(--co);background:var(--card);padding:12px 14px;border-radius:10px;min-height:3.4em;margin-bottom:16px}.say.bad{border-color:#b00020}
+.nav{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.dots{display:flex;gap:6px;margin-left:auto}.dots button{width:12px;height:12px;border-radius:50%;border:2px solid var(--br);background:none;padding:0;cursor:pointer}.dots button[aria-current="step"]{background:var(--br)}
+.lnk{background:none;border:0;color:var(--mut);text-decoration:underline;font:inherit;cursor:pointer;margin-top:12px;padding:0}
+@media(min-width:900px){.hero{grid-template-columns:1.1fr .9fr}.tour{grid-template-columns:minmax(0,1fr) 360px;gap:48px}}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px}summary{cursor:pointer;padding:14px 16px;font:500 17px Jost;list-style:none;display:flex;justify-content:space-between;gap:12px}summary::-webkit-details-marker{display:none}summary::after{content:"+";font-size:22px;line-height:1}details[open] summary::after{content:"–"}details p{margin:0;padding:0 16px 16px;color:var(--mut)}
+.phone{--p:#0F3D3A;--s:#EDAEA1;--a:#E0745E;--b:#F2E6D6;width:min(100%,340px);margin:0 auto;border:9px solid #10211f;border-radius:34px;background:var(--b);color:#222;overflow:hidden;display:flex;flex-direction:column;height:600px;font-size:14px;line-height:1.4}
+.mh{display:flex;gap:8px;align-items:center;padding:12px 14px;font:600 21px 'Cormorant Garamond',serif;color:var(--p)}.lg{width:26px;height:26px;border-radius:8px;background:var(--p);color:#fff;font:600 14px Jost;display:grid;place-items:center;font-style:normal}
+.ms{flex:1;overflow:auto;padding:0 12px 12px}.mn{display:flex;background:#fff;border-top:1px solid #0001}.mn span{flex:1;padding:9px 0;display:grid;place-items:center;color:#777}.mn span.on{color:var(--p);box-shadow:inset 0 2px var(--p)}.mn .ic{width:20px;height:20px}
+.mc{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 3px #0001;border:1px solid #0000000d;margin-bottom:8px}.mg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.mg .mc{margin:0}.mc small{display:block;color:#666;font-size:12px}.mc b{font:500 17px Jost;color:var(--p)}
+.mb{background:var(--p);color:#fff;border:0;border-radius:8px;padding:9px 12px;font:500 14px Jost;cursor:pointer;width:100%}.mb.s{background:#fff;color:var(--p);border:1px solid var(--p)}.mb.q{width:34px;padding:3px}
+.phone input,.phone select,.phone textarea{width:100%;padding:8px;border:1px solid #0003;border-radius:8px;font:inherit;background:#fff;color:#222;margin:3px 0}
+.mr{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #0001}.mr:first-child{border:0}.mr small{display:block}
+.mt{font:600 18px 'Cormorant Garamond',serif;margin:10px 0 6px;color:var(--p)}.fb{width:100%;display:flex;justify-content:space-between;align-items:center;background:none;border:0;padding:10px;font:inherit;cursor:pointer;color:#222}.ar{display:inline-flex;transition:transform .2s}.ar.up{transform:rotate(180deg)}
+.pal{width:100%;text-align:left;cursor:pointer;font:inherit}.pal.sel{outline:2px solid var(--p)}.sw{display:flex;gap:4px}.sw i{width:16px;height:16px;border-radius:50%;display:block}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.appearance{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:14px}
+.appearance select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color-scheme:light dark}
+.appearance select:focus-visible{outline:2px solid var(--br);outline-offset:2px}
+:root[data-theme="kvantcode"]{--bg:#050b1f;--ink:#f1f5ff;--mut:#a9bad3;--card:#0b152e;--line:#29436a;--br:#38bdf8;--on:#050b1f;--co:#60a5fa;color-scheme:dark}
+[data-theme="kvantcode"] body{font-family:"Space Grotesk",system-ui,sans-serif;background:radial-gradient(ellipse at 75% 8%,#10234a,transparent 52%),var(--bg)}
+[data-theme="kvantcode"] :is(h1,h2,h3,.brand,.btn,.chip,.sh,summary,nav button,.ben b){font-family:"Space Grotesk",system-ui,sans-serif}
+[data-theme="kvantcode"] .brand{color:var(--br)}
+[data-theme="kvantcode"] h1{letter-spacing:-.045em}
+[data-theme="kvantcode"] .btn:not(.s){background:linear-gradient(135deg,#60a5fa,#38bdf8);border-color:transparent;font-weight:700}
+[data-theme="kvantcode"] .phone{border-color:#192d51;box-shadow:0 16px 55px #02061780;color-scheme:light}
+</style></head><body>
+<header><div class="w"><span class="brand">Guía de Gestión de Negocio</span><nav aria-label="Secciones"><button data-v="home">Bienvenida</button><button data-v="tour">Recorrido</button><button data-v="faq">Preguntas</button></nav><label class="appearance">Apariencia <select id="appearance"><option value="">Original</option><option value="kvantcode" selected>KvantCode</option></select></label></div></header>
+<main class="w">
+<section id="home"><div class="hero"><div><span class="chip">15 días gratis, sin tarjeta</span><h1>Tu negocio en orden, desde el celular o la compu</h1><p class="l">Registra tus productos, anota ventas y gastos, y guarda tus pendientes. Sin planillas ni cuentas complicadas.</p>
+<ul class="ben" id="ben"></ul><button class="btn" data-v="tour">Empezar el recorrido</button> <button class="btn s" data-v="faq">Ver preguntas frecuentes</button></div>
+<div><div class="phone" id="hero" aria-label="Vista de ejemplo de la pantalla de Inicio"></div></div></div></section>
+<section id="tour" hidden><div class="tour"><div>
+<div class="sh" id="sh"></div><h2 id="st"></h2><p id="sd"></p><div class="tip" id="tip"></div>
+<div class="say" id="say" role="status" aria-live="polite"></div>
+<div class="nav"><button class="btn s" id="prev">Anterior</button><button class="btn" id="next">Siguiente</button><div class="dots" id="dots"></div></div>
+<button class="lnk" data-a="reset">Reiniciar la práctica</button></div>
+<div><div class="phone" id="screen" aria-label="Práctica interactiva: puedes tocar todo sin miedo a romper nada"></div><p style="text-align:center;color:var(--mut);font-size:14px">Es una simulación: nada de lo que hagas aquí se guarda.</p></div></div></section>
+<section id="faq" hidden><h2>Preguntas frecuentes</h2><div style="max-width:720px">
+<details><summary>¿Qué pasa cuando terminan los 15 días gratis?</summary><p>La app se bloquea, pero tus datos quedan guardados. Cuando hagas el pago único con Mercado Pago, vuelves a entrar y encuentras todo como lo dejaste.</p></details>
+<details><summary>¿Puedo vender un producto que no tiene stock?</summary><p>No. Los productos sin stock no aparecen al registrar una venta. Primero carga las unidades en Stock.</p></details>
+<details><summary>¿Un gasto cambia mi stock?</summary><p>No. Gastos solo registra dinero que sale. El stock cambia únicamente cuando das de alta productos o registras ventas. Dar de alta un producto tampoco crea un gasto.</p></details>
+<details><summary>Me equivoqué en una venta. ¿Puedo corregirla?</summary><p>Sí. En Ventas, en el registro, toca ✎ para modificarla o ✕ para eliminarla. El stock se ajusta solo.</p></details>
+<details><summary>¿Por qué no puedo guardar un evento en la agenda?</summary><p>Porque el horario se superpone con otro evento. El aviso te dice con cuál. Cambia la hora o reprograma el otro evento.</p></details>
+<details><summary>¿Cómo evito categorías repetidas en Stock?</summary><p>Al dar de alta un producto, elige una categoría de la lista. Si creas una nueva y ya existe una igual (aunque cambien mayúsculas o tildes), la app usa la existente.</p></details>
+<details><summary>¿Cómo instalo la app en mi celular?</summary><p>Android: en Chrome, abre el menú ⋮ y toca “Instalar aplicación”. iPhone: en Safari, toca Compartir y luego “Agregar a pantalla de inicio”. Hazlo desde el enlace oficial de la app.</p></details>
+<details><summary>¿Cómo cambio el color o pongo mi logo?</summary><p>Entra en Ajustes. Ahí escribes el nombre de tu negocio, adjuntas tu logo y eliges entre cuatro paletas de color.</p></details>
+<details><summary>¿Otras personas ven mis datos?</summary><p>No. Cada cuenta ve únicamente su propia información.</p></details>
+</div></section></main>
+<script>
+const $=s=>document.querySelector(s),money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n)
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
+const PAL=[['Barrol',['#0F3D3A','#EDAEA1','#E0745E','#F2E6D6']],['Violeta Dusk',['#502D55','#935073','#F6DBC0','#F8F4E9']],['Eucalipto',['#233B32','#4C7A66','#8FBBA6','#DDEEE3']],['Cove',['#006BBB','#30A0E0','#FFC973','#F2F8FC']]]
+const I={inicio:'<path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/>',ventas:'<path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 016 0v2"/>',gastos:'<path d="M3 7a2 2 0 012-2h13v4M3 7v11a2 2 0 002 2h15V9H5a2 2 0 01-2-2zM16 14h2"/>',stock:'<path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',agenda:'<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/>',ajustes:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M6 15v4"/>',chev:'<path d="M6 9l6 6 6-6"/>'}
+const ic=n=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`
+const GC=['Mercadería','Insumos','Alquiler','Servicios','Sueldos','Impuestos','Marketing','Otros'],NAV=['inicio','ventas','gastos','stock','agenda','ajustes']
+const fresh=()=>({i:0,q:1,form:false,logo:false,pal:0,ing:18400,egr:6200,fold:{},say:'',ok:1,
+prods:[{n:'Café molido 250 g',c:'Almacén',p:4200,s:12},{n:'Galletas de avena',c:'Panadería',p:2300,s:3},{n:'Mermelada casera',c:'Almacén',p:3100,s:0},{n:'Té de hierbas',c:'Infusiones',p:1900,s:7}],
+ev:[{t:'Visita de proveedor',a:'10:00',b:'11:00'}],notas:['Pedir bolsas de papel'],
+f:{n:'Pan de campo',cat:'Almacén',newc:'',p:'3500',qty:'8',sp:'',gc:'Insumos',gm:'15000',et:'Reunión con cliente',ea:'10:30',eb:'11:30',nota:''}})
+let S=fresh()
+const units=()=>S.prods.reduce((s,p)=>s+p.s,0),cats=()=>[...new Set(S.prods.map(p=>p.c))].sort((a,b)=>a.localeCompare(b,'es'))
+const avail=()=>S.prods.filter(p=>p.s>0),cur=()=>avail().find(p=>p.n===S.f.sp)||avail()[0]
+const say=(t,ok=1)=>{S.say=t;S.ok=ok}
+const wrap=(a,b)=>`<div class="mh">${S.logo?'<i class="lg">M</i>':''}Mi Almacén</div><div class="ms">${b}</div><div class="mn">${NAV.map(n=>`<span class="${n===a?'on':''}">${ic(n)}</span>`).join('')}</div>`
+const card=(t,v)=>`<div class="mc"><small>${t}</small><b>${v}</b></div>`
+const X=(a,i,l)=>`<button class="mb s q" data-a="${a}" data-i="${i}" aria-label="${l}">✕</button>`
+const scr={
+inicio(){const mx=[...S.prods].sort((a,b)=>b.s-a.s).slice(0,3),mn=[...S.prods].sort((a,b)=>a.s-b.s).slice(0,3)
+const fo=(k,t,l)=>`<div class="mc" style="padding:0"><button class="fb" data-a="fold" data-i="${k}" aria-expanded="${!!S.fold[k]}"><b>${t}</b><span class="ar ${S.fold[k]?'up':''}">${ic('chev')}</span></button>${S.fold[k]?l.map(p=>`<div class="mr" style="padding:6px 12px"><span>${p.n}</span><b>${p.s}</b></div>`).join(''):''}</div>`
+return wrap('inicio',`<div class="mt">Resumen de stock</div><div class="mg">${card('Productos',S.prods.length)}${card('Unidades',units())}</div><div class="mt">Ingresos y egresos</div><select disabled aria-label="Filtro de fecha"><option>Este mes</option></select><div class="mg" style="margin-top:6px">${card('Ingresos',money(S.ing))}${card('Egresos',money(S.egr))}</div>${card('Saldo',money(S.ing-S.egr))}${fo('mx','Mayor stock',mx)}${fo('mn','Menor stock',mn)}<div class="mt">Notas</div>${S.notas.map(n=>`<div class="mc">${esc(n)}</div>`).join('')||'<small>Sin notas</small>'}`)},
+ventas(){const pr=cur(),q=pr?Math.min(S.q,pr.s):0
+return wrap('ventas',`<div class="mt">Ventas</div>${card('Total vendido',money(S.ing))}<div class="mc"><small>Producto</small><select data-k="sp" aria-label="Producto">${avail().map(x=>`<option ${pr&&x.n===pr.n?'selected':''}>${x.n}</option>`).join('')}</select>${pr?`<div class="mr"><span>Cantidad (máx. ${pr.s})</span><span><button class="mb s q" data-a="qm" aria-label="Menos">−</button> <b>${q}</b> <button class="mb s q" data-a="qp" aria-label="Más">+</button></span></div><div class="mr"><span>Total</span><b>${money(q*pr.p)}</b></div><button class="mb" data-a="sell">Cerrar venta</button>`:'<small>No hay productos con stock.</small>'}</div><small>Sin stock, no aparece: ${S.prods.filter(x=>!x.s).map(x=>x.n).join(', ')||'ninguno'}.</small>`)},
+gastos(){return wrap('gastos',`<div class="mt">Gastos</div>${card('Total gastado',money(S.egr))}<div class="mc"><select data-k="gc" aria-label="Categoría">${GC.map(c=>`<option ${S.f.gc===c?'selected':''}>${c}</option>`).join('')}</select><input data-k="gm" type="number" placeholder="Monto" value="${esc(S.f.gm)}"><button class="mb" data-a="addg">Guardar gasto</button></div><small>Unidades en stock: ${units()}. Los gastos no las cambian.</small>`)},
+stock(){const f=S.f
+return wrap('stock',`<div class="mt">Stock</div><div class="mg">${card('Productos',S.prods.length)}${card('Unidades',units())}</div><button class="mb" data-a="form" style="margin-bottom:8px">+ Alta de producto</button>${S.form?`<div class="mc"><input data-k="n" placeholder="Nombre" value="${esc(f.n)}"><select data-k="cat" aria-label="Categoría">${cats().map(c=>`<option ${f.cat===c?'selected':''}>${c}</option>`).join('')}<option value="__n" ${f.cat==='__n'?'selected':''}>➕ Crear categoría nueva…</option></select>${f.cat==='__n'?`<input data-k="newc" placeholder="Nueva categoría" value="${esc(f.newc)}">`:''}<input data-k="p" type="number" placeholder="Precio de venta" value="${esc(f.p)}"><input data-k="qty" type="number" placeholder="Cantidad" value="${esc(f.qty)}"><button class="mb" data-a="addp">Guardar producto</button></div>`:''}<div class="mc">${[...S.prods].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(p=>`<div class="mr"><span>${esc(p.n)}<small>${esc(p.c)}</small></span><b>${p.s}</b></div>`).join('')}</div>`)},
+agenda(){const f=S.f
+return wrap('agenda',`<div class="mt">Agenda de hoy</div><div class="mc">${S.ev.map((e,i)=>`<div class="mr"><span><b>${esc(e.t)}</b><small>${e.a} a ${e.b}</small></span>${X('dele',i,'Eliminar evento')}</div>`).join('')||'<small>Sin eventos. Agenda el primero.</small>'}</div><div class="mc"><input data-k="et" value="${esc(f.et)}" aria-label="Título"><div class="mg"><input data-k="ea" type="time" value="${f.ea}" aria-label="Inicio"><input data-k="eb" type="time" value="${f.eb}" aria-label="Fin"></div><button class="mb" data-a="adde">Guardar evento</button></div><div class="mt">Notas</div><div class="mc"><textarea data-k="nota" rows="2" placeholder="Escribe una nota…">${esc(f.nota)}</textarea><button class="mb" data-a="addn">Agregar nota</button></div>${S.notas.map((n,i)=>`<div class="mc"><div class="mr"><span>${esc(n)}</span>${X('deln',i,'Eliminar nota')}</div></div>`).join('')}`)},
+ajustes(){return wrap('ajustes',`<div class="mt">Configuración</div><div class="mc"><input value="Mi Almacén" readonly aria-label="Nombre del negocio"><button class="mb s" data-a="logo" style="margin-top:6px">${S.logo?'Quitar logo':'Adjuntar logo'}</button></div><div class="mt">Color de la app</div>${PAL.map((p,i)=>`<button class="mc pal ${S.pal===i?'sel':''}" data-a="pal" data-i="${i}"><div class="mr"><b>${p[0]}</b><span class="sw">${p[1].map(c=>`<i style="background:${c}"></i>`).join('')}</span></div></button>`).join('')}`)}}
+const STEPS=[
+{k:'stock',t:'Carga tus productos',d:'Empieza por Stock. Da de alta cada producto con su nombre, categoría y precio de venta. La lista se ordena de la A a la Z.',tip:'Toca “Alta de producto” y guarda uno. Para ver un truco, elige “Crear categoría nueva” y escribe almacen.'},
+{k:'ventas',t:'Registra una venta',d:'Elige el producto y la cantidad, y cierra la venta. El stock baja solo y el importe suma a tus ingresos.',tip:'Mermelada casera no aparece en la lista porque no tiene stock. Vende todas las unidades de otro producto y verás que desaparece.'},
+{k:'gastos',t:'Anota un gasto',d:'Alquiler, insumos, mercadería: elige la categoría y el monto. Aquí solo registras dinero que sale.',tip:'Guarda un gasto y mira abajo: las unidades de stock no cambian.'},
+{k:'agenda',t:'Agenda y notas',d:'Agenda citas con día y hora, sin que se pisen. A la derecha de la agenda, en la app, escribes notas para no olvidarte de nada.',tip:'Guarda el evento tal como está: se superpone con otro. Cambia la hora a 12:00 y vuelve a intentar.'},
+{k:'inicio',t:'Mira tu resumen',d:'Inicio junta todo: stock, ingresos, egresos y saldo (ingresos menos egresos), más tus notas. Lo que hiciste en este recorrido ya está sumado.',tip:'Toca la flecha de “Mayor stock” y “Menor stock” para ver u ocultar el detalle.'},
+{k:'ajustes',t:'Hazla tuya',d:'En Ajustes pones el nombre de tu negocio, adjuntas tu logo y eliges el color de toda la app.',tip:'Toca “Adjuntar logo” y prueba otra paleta. Mira cómo cambia el teléfono.'}]
+const ACT={
+form(){S.form=!S.form},
+addp(){const f=S.f,n=f.n.trim();if(!n)return say('Falta el nombre del producto. Escríbelo y vuelve a guardar.',0)
+let c=f.cat,note='';if(c==='__n'){const t=f.newc.trim(),m=cats().find(x=>norm(x)===norm(t));if(!t)return say('Escribe el nombre de la categoría nueva.',0);c=m||t;if(m&&m!==t)note=` Ya existía la categoría “${m}”, así que la usamos para no duplicarla.`}
+S.prods.push({n,c,p:+f.p||0,s:Math.max(0,parseInt(f.qty)||0)});S.form=false;f.n='';f.cat=c;say(`Listo: “${n}” ya está en tu lista, ordenada de la A a la Z.${note}`)},
+qm(){S.q=Math.max(1,S.q-1)},qp(){const p=cur();if(p)S.q=Math.min(p.s,S.q+1)},
+sell(){const p=cur();if(!p)return;const q=Math.min(S.q,p.s);p.s-=q;S.ing+=q*p.p;S.q=1;say(`Venta registrada: ${q} × ${p.n}. El stock bajó a ${p.s} y ${money(q*p.p)} se sumó a tus ingresos.${p.s?'':' Se agotó, por eso ya no aparece en la lista.'}`)},
+addg(){const m=+S.f.gm;if(!(m>0))return say('El monto debe ser mayor que cero. Escribe cuánto gastaste.',0);S.egr+=m;say(`Gasto guardado en “${S.f.gc}”: ${money(m)}. Tu stock sigue igual: ${units()} unidades.`)},
+adde(){const{et,ea,eb}=S.f;if(!et.trim())return say('Falta el título del evento.',0);if(!ea||!eb||eb<=ea)return say('La hora de fin debe ser posterior a la de inicio.',0)
+const x=S.ev.find(e=>ea<e.b&&eb>e.a);if(x)return say(`Ese horario se superpone con “${x.t}” (${x.a} a ${x.b}). Elige otro horario.`,0)
+S.ev.push({t:et.trim(),a:ea,b:eb});S.ev.sort((p,q)=>p.a<q.a?-1:1);say(`Evento guardado de ${ea} a ${eb}. También aparece en los recordatorios de Inicio.`)},
+dele(i){S.ev.splice(i,1);say('Evento eliminado. Ese horario vuelve a estar libre.')},
+addn(){const t=S.f.nota.trim();if(!t)return say('Escribe algo antes de agregar la nota.',0);S.notas.unshift(t);S.f.nota='';say('Nota guardada. Se verá en Inicio hasta que la elimines.')},
+deln(i){S.notas.splice(i,1);say('Nota eliminada.')},
+fold(k){S.fold[k]=!S.fold[k]},
+logo(){S.logo=!S.logo;say(S.logo?'Así se verá tu logo junto al nombre del negocio. En la app eliges una imagen de tu dispositivo.':'Logo quitado.')},
+pal(i){S.pal=+i;say(`Color “${PAL[i][0]}” aplicado a toda la app.`)},
+reset(){S=fresh();say('Práctica reiniciada.')}}
+function render(){const s=STEPS[S.i]
+$('#screen').innerHTML=scr[s.k]();$('#hero').innerHTML=scr.inicio()
+const c=PAL[S.pal][1];document.querySelectorAll('.phone').forEach(p=>['--p','--s','--a','--b'].forEach((v,j)=>p.style.setProperty(v,c[j])))
+$('#sh').innerHTML=`${ic(s.k)}<span>Paso ${S.i+1} de ${STEPS.length}</span>`;$('#st').textContent=s.t;$('#sd').textContent=s.d;$('#tip').innerHTML='<b>Pruébalo:</b> '+esc(s.tip)
+const sy=$('#say');sy.textContent=S.say||'Toca los botones del teléfono. Aquí te contamos qué pasó.';sy.className='say'+(S.ok?'':' bad')
+$('#prev').disabled=S.i===0;$('#next').textContent=S.i===STEPS.length-1?'Ver preguntas frecuentes':'Siguiente'
+$('#dots').innerHTML=STEPS.map((x,i)=>`<button data-go="${i}" aria-label="Ir al paso ${i+1}: ${x.t}" ${i===S.i?'aria-current="step"':''}></button>`).join('')}
+function show(v){['home','tour','faq'].forEach(id=>$('#'+id).hidden=id!==v);document.querySelectorAll('nav button').forEach(b=>b.dataset.v===v?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));scrollTo(0,0)}
+function go(i){S.i=i;S.say='';S.ok=1;render()}
+document.addEventListener('click',e=>{const v=e.target.closest('[data-v]');if(v)return show(v.dataset.v)
+const g=e.target.closest('[data-go]');if(g)return go(+g.dataset.go)
+const b=e.target.closest('[data-a]');if(!b)return;ACT[b.dataset.a](b.dataset.i);render()})
+document.addEventListener('input',e=>{const k=e.target.dataset.k;if(!k)return;S.f[k]=e.target.value;if(k==='sp')S.q=1;if(e.target.tagName==='SELECT')render()})
+$('#prev').onclick=()=>go(S.i-1);$('#next').onclick=()=>S.i===STEPS.length-1?show('faq'):go(S.i+1)
+$('#ben').innerHTML=[['stock','Stock siempre al día','Cada venta descuenta las unidades sola.'],['gastos','Ventas y gastos claros','Ves cuánto entra, cuánto sale y cuál es tu saldo.'],['agenda','Agenda y notas','Tus citas y pendientes en un solo lugar.'],['ajustes','A tu estilo','Pon tu logo y elige tus colores. Funciona en celular y computadora.']].map(x=>`<li>${ic(x[0])}<span><b>${x[1]}</b>${x[2]}</span></li>`).join('')
+const appearance = $('#appearance');
+function setAppearance(value) {
+  if (value === 'kvantcode') document.documentElement.dataset.theme = value;
+  else delete document.documentElement.dataset.theme;
+}
+appearance.addEventListener('change', () => setAppearance(appearance.value));
+setAppearance(appearance.value);
+show('home');render()
+</script></body></html>
