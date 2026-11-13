@@ -70,6 +70,8 @@ type PanelLead = {
   status: "nuevo" | "contactado" | "propuesta" | "ganado" | "perdido";
   next_follow_up: string | null;
   notes: string | null;
+  reseller_id: string | null;
+  reseller_notes: string | null;
   converted_client_id: string | null;
   won_by_user_id: string | null;
   won_by_name: string | null;
@@ -208,7 +210,7 @@ function PanelPage() {
     return <PanelLogin />;
   }
 
-  return <PanelAccess userId={session.user.id} />;
+  return <PanelAccess key={session.user.id} userId={session.user.id} />;
 }
 
 function PanelLogin() {
@@ -323,7 +325,7 @@ function PanelLogin() {
 
 function PanelAccess({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<PanelRole | null>(null);
+  const [role, setRole] = useState<PanelRole | "reseller" | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -355,9 +357,22 @@ function PanelAccess({ userId }: { userId: string }) {
         console.error("Error comprobando rol staff:", staffError);
       }
 
-      if (mounted) {
-        setRole(isStaff ? "staff" : null);
-        setLoading(false);
+      if (isStaff) {
+        if (mounted) {
+          setRole("staff");
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const { data, error } = await resellerClient.rpc("kvant_reseller_access");
+        if (error) throw error;
+        if (mounted && data === true) setRole("reseller");
+      } catch (error) {
+        console.error("Error comprobando acceso de revendedor:", error);
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
 
@@ -370,6 +385,7 @@ function PanelAccess({ userId }: { userId: string }) {
 
   if (loading) return <LoadingScreen />;
   if (!role) return <AccessDenied />;
+  if (role === "reseller") return <ResellerPortal />;
 
   return <PanelShell role={role} userId={userId} />;
 }
@@ -2675,7 +2691,7 @@ function LeadsModule({ role }: { role: PanelRole }) {
         supabase
           .from("leads")
           .select(
-            "id,name,company,email,phone,source,status,next_follow_up,notes,converted_client_id,won_by_user_id,won_by_name,won_at,converted_by_user_id,converted_by_name,converted_at,active,created_by,created_at,updated_at",
+            "id,name,company,email,phone,source,status,next_follow_up,notes,reseller_id,reseller_notes,converted_client_id,won_by_user_id,won_by_name,won_at,converted_by_user_id,converted_by_name,converted_at,active,created_by,created_at,updated_at",
           )
           .order("active", { ascending: false })
           .order("next_follow_up", {
@@ -2989,6 +3005,8 @@ function LeadsModule({ role }: { role: PanelRole }) {
       lead.phone,
       lead.source,
       lead.notes,
+      lead.reseller_notes,
+      getProfileNameById(lead.reseller_id),
       lead.won_by_name,
       lead.converted_by_name,
     ]
@@ -3454,6 +3472,9 @@ function LeadsModule({ role }: { role: PanelRole }) {
                         )}
                         {lead.phone && <span>📞 {lead.phone}</span>}
                         {lead.source && <span>🔎 Origen: {lead.source}</span>}
+                        {lead.reseller_id && (
+                          <span>Registrado por revendedor · {getProfileNameById(lead.reseller_id) ?? "Cuenta sin perfil"}</span>
+                        )}
                         <span>
                           📅 Seguimiento:{" "}
                           {lead.next_follow_up
@@ -3473,6 +3494,13 @@ function LeadsModule({ role }: { role: PanelRole }) {
                           <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                             {lead.notes}
                           </p>
+                        </div>
+                      )}
+
+                      {lead.reseller_notes && (
+                        <div className="mt-3 rounded-lg border border-border bg-background/30 px-3 py-2 [overflow-wrap:anywhere]">
+                          <p className="mb-1 text-xs font-medium text-accent">Seguimiento del revendedor</p>
+                          <p className="whitespace-pre-wrap text-sm text-muted-foreground">{lead.reseller_notes}</p>
                         </div>
                       )}
 
@@ -3828,6 +3856,228 @@ function PlaceholderModule({
     </ModuleHeader>
   );
 }
+
+type ResellerLead = Pick<PanelLead, "id" | "name" | "company" | "email" | "phone" | "status" | "next_follow_up" | "updated_at"> & {
+  reseller_notes: string | null;
+  can_edit: boolean;
+};
+type ResellerOpenStatus = "nuevo" | "contactado" | "propuesta";
+type ResellerFollowUp = { p_follow_up: string | null; p_notes: string };
+type ResellerLeadInput = ResellerFollowUp & {
+  p_name: string;
+  p_company: string;
+  p_email: string;
+  p_phone: string;
+};
+
+type ResellerDatabase = {
+  public: {
+    Tables: Record<never, never>;
+    Views: Record<never, never>;
+    Functions: {
+      kvant_reseller_access: { Args: Record<never, never>; Returns: boolean };
+      kvant_reseller_leads: { Args: Record<never, never>; Returns: ResellerLead[] };
+      kvant_reseller_create_lead: { Args: ResellerLeadInput & { p_id: string }; Returns: string };
+      kvant_reseller_follow_up: {
+        Args: ResellerFollowUp & { p_id: string; p_expected_updated_at: string; p_status: ResellerOpenStatus };
+        Returns: boolean;
+      };
+    };
+  };
+};
+
+const resellerClient = supabase as unknown as SupabaseClient<ResellerDatabase>;
+const resellerStatusLabels: Record<PanelLead["status"], string> = {
+  nuevo: "Nuevo", contactado: "Contactado", propuesta: "Propuesta", ganado: "Ganado", perdido: "Perdido",
+};
+const resellerOpenStatuses: ResellerOpenStatus[] = ["nuevo", "contactado", "propuesta"];
+
+function ResellerLeadForm({ lead, onSaved, onCancel }: {
+  lead?: ResellerLead | undefined;
+  onSaved: (message: string) => void;
+  onCancel: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [stale, setStale] = useState(false);
+  const lock = useRef(false);
+  const request = useRef<{ signature: string; id: string } | null>(null);
+
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (lock.current || stale) return;
+    const fields = new FormData(event.currentTarget);
+    const value = (name: string) => String(fields.get(name) ?? "").trim();
+    const followUp = { p_follow_up: value("follow-up") || null, p_notes: value("notes") };
+    if (!lead && !value("name")) {
+      setError("Ingresá el nombre del prospecto.");
+      return;
+    }
+
+    lock.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      if (lead) {
+        const status = resellerOpenStatuses.find((option) => option === value("status"));
+        if (!status) {
+          setError("Elegí un estado de seguimiento válido.");
+          return;
+        }
+        const { data, error: saveError } = await resellerClient.rpc("kvant_reseller_follow_up", {
+          ...followUp, p_id: lead.id, p_expected_updated_at: lead.updated_at, p_status: status,
+        });
+        if (saveError) throw saveError;
+        if (!data) {
+          setStale(true);
+          setError("El prospecto cambió mientras lo editabas. Revisá tu texto, cerrá el formulario y actualizá la lista antes de editarlo de nuevo.");
+          return;
+        }
+      } else {
+        const payload = {
+          ...followUp, p_name: value("name"), p_company: value("company"),
+          p_email: value("email"), p_phone: value("phone"),
+        };
+        const signature = JSON.stringify(payload);
+        if (request.current?.signature !== signature) request.current = { signature, id: crypto.randomUUID() };
+        const { error: saveError } = await resellerClient.rpc("kvant_reseller_create_lead", {
+          ...payload, p_id: request.current.id,
+        });
+        if (saveError) throw saveError;
+      }
+      onSaved(lead ? "Seguimiento guardado." : "Prospecto registrado.");
+    } catch (saveError) {
+      console.error("Error guardando prospecto de revendedor:", saveError);
+      setError("No se pudo confirmar el guardado. Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      lock.current = false;
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className="mb-5 rounded-xl border border-border bg-card p-5" onSubmit={save}>
+      <h2 className="mb-4 text-lg font-semibold">{lead ? `Seguimiento de ${lead.name}` : "Nuevo prospecto"}</h2>
+      <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
+        {lead ? (
+          <label className="block text-sm">Estado
+            <select name="status" className={input + " mt-1"} defaultValue={lead.status}>
+              {resellerOpenStatuses.map((status) => <option key={status} value={status}>{resellerStatusLabels[status]}</option>)}
+            </select>
+          </label>
+        ) : (
+          <>
+            <label className="block text-sm">Nombre *
+              <input name="name" className={input + " mt-1"} required maxLength={160} />
+            </label>
+            <label className="block text-sm">Empresa
+              <input name="company" className={input + " mt-1"} maxLength={160} />
+            </label>
+            <label className="block text-sm">Correo
+              <input name="email" type="email" className={input + " mt-1"} maxLength={254} />
+            </label>
+            <label className="block text-sm">Teléfono
+              <input name="phone" type="tel" className={input + " mt-1"} maxLength={80} />
+            </label>
+          </>
+        )}
+        <label className="block text-sm">Próximo seguimiento
+          <input name="follow-up" type="date" className={input + " mt-1"} defaultValue={lead?.next_follow_up ?? ""} />
+        </label>
+        <label className="block text-sm sm:col-span-2">Notas para compartir con KvantCode
+          <textarea name="notes" className={input + " mt-1 min-h-20"} maxLength={4000} defaultValue={lead?.reseller_notes ?? ""} />
+        </label>
+      </fieldset>
+      {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button className={btn} type="submit" disabled={saving || stale}>{saving ? "Guardando…" : "Guardar"}</button>
+        <button className={btnGhost} type="button" disabled={saving} onClick={onCancel}>Cancelar</button>
+      </div>
+    </form>
+  );
+}
+
+function ResellerPortal() {
+  const [leads, setLeads] = useState<ResellerLead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [reload, setReload] = useState(0);
+  const [form, setForm] = useState<"new" | ResellerLead | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    void (async () => {
+      try {
+        const { data, error: loadError } = await resellerClient.rpc("kvant_reseller_leads");
+        if (loadError) throw loadError;
+        if (active) setLeads(data ?? []);
+      } catch (loadError) {
+        console.error("Error cargando prospectos de revendedor:", loadError);
+        if (active) setError("No pudimos cargar tus prospectos. Volvé a intentar con Actualizar.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [reload]);
+
+  return (
+    <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6">
+      <div className="mx-auto max-w-5xl">
+        <header className="mb-8 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <img src={logoHorizontal} alt="KvantCode" className="h-10 w-auto max-w-[190px] object-contain" />
+          <button type="button" className={btnGhost} onClick={() => void supabase.auth.signOut()}>Cerrar sesión</button>
+        </header>
+        <ModuleHeader eyebrow="// REVENDEDORES" title="Mis prospectos"
+          description="Registrá oportunidades y compartí el seguimiento con KvantCode."
+          actionLabel={form === null ? "Nuevo prospecto" : undefined}
+          onAction={() => { setNotice(""); setForm("new"); }}>
+          {form && <ResellerLeadForm key={form === "new" ? "new" : form.id}
+            lead={form === "new" ? undefined : form}
+            onSaved={(message) => { setForm(null); setNotice(message); setReload((value) => value + 1); }}
+            onCancel={() => setForm(null)} />}
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-semibold">Prospectos registrados</h2>
+            <button type="button" className={btnGhost} disabled={loading || form !== null}
+              onClick={() => setReload((value) => value + 1)}>Actualizar</button>
+          </div>
+          <p role="status" className="mb-3 text-sm text-muted-foreground">{notice}</p>
+          {loading ? (
+            <p role="status" className="text-sm text-muted-foreground">Cargando prospectos…</p>
+          ) : error ? (
+            <p role="alert" className="text-sm text-red-400">{error}</p>
+          ) : leads.length === 0 ? (
+            <p className="rounded-xl border border-border p-5 text-sm text-muted-foreground">Todavía no registraste prospectos.</p>
+          ) : (
+            <ul className="space-y-3">
+              {leads.map((lead) => (
+                <li key={lead.id} className="space-y-2 rounded-xl border border-border bg-card p-4 [overflow-wrap:anywhere]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-semibold">{lead.name}</h3>
+                    <span className="rounded-full border border-border px-2.5 py-1 text-xs text-accent">{resellerStatusLabels[lead.status]}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {[lead.company, lead.email, lead.phone].filter(Boolean).join(" · ")}
+                  </p>
+                  <p className="text-sm">Próximo seguimiento · {formatDate(lead.next_follow_up)}</p>
+                  {lead.reseller_notes && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{lead.reseller_notes}</p>}
+                  {lead.can_edit && (
+                    <button type="button" className={btnGhost} disabled={form !== null}
+                      onClick={() => { setNotice(""); setForm(lead); }}>Editar seguimiento</button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </ModuleHeader>
+      </div>
+    </main>
+  );
+}
+
 
 type AgendaKind = "socios" | "comercial";
 type AgendaReply = "aceptada" | "rechazada";
@@ -4193,8 +4443,8 @@ function ModuleHeader({
   eyebrow: string;
   title: string;
   description: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  actionLabel?: string | undefined;
+  onAction?: (() => void) | undefined;
   children: ReactNode;
 }) {
   return (

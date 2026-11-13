@@ -14,6 +14,224 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          at: string
+          detail: Json | null
+          entity: string
+          entity_id: string | null
+          id: number
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          at?: string
+          detail?: Json | null
+          entity: string
+          entity_id?: string | null
+          id?: never
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          at?: string
+          detail?: Json | null
+          entity?: string
+          entity_id?: string | null
+          id?: never
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          active: boolean
+          company: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          active: boolean
+          amount: number
+          category: string
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          id: string
+          spent_on: string
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          category: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          spent_on?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          category?: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          spent_on?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          active: boolean
+          company: string | null
+          converted_at: string | null
+          converted_by_name: string | null
+          converted_by_user_id: string | null
+          converted_client_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          next_follow_up: string | null
+          notes: string | null
+          phone: string | null
+          reseller_id: string | null
+          reseller_notes: string | null
+          source: string | null
+          status: string
+          updated_at: string
+          won_at: string | null
+          won_by_name: string | null
+          won_by_user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          company?: string | null
+          converted_at?: string | null
+          converted_by_name?: string | null
+          converted_by_user_id?: string | null
+          converted_client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone?: string | null
+          reseller_id?: string | null
+          reseller_notes?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          won_at?: string | null
+          won_by_name?: string | null
+          won_by_user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          company?: string | null
+          converted_at?: string | null
+          converted_by_name?: string | null
+          converted_by_user_id?: string | null
+          converted_client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone?: string | null
+          reseller_id?: string | null
+          reseller_notes?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          won_at?: string | null
+          won_by_name?: string | null
+          won_by_user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       site_content: {
         Row: {
           data: Json
@@ -31,6 +249,145 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      task_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string | null
+          storage_path: string
+          task_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size: number
+          id?: string
+          mime_type?: string | null
+          storage_path: string
+          task_id: string
+          uploaded_by?: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          storage_path?: string
+          task_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          client_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          lead_id: string | null
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string | null
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string | null
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -55,6 +412,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      convert_lead_to_client: { Args: { p_lead_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -62,9 +420,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_staff_or_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -192,7 +551,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "staff"],
     },
   },
 } as const
