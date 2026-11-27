@@ -115,6 +115,29 @@
 @keyframes marquee { to { transform: translateX(-50%); } }
 @keyframes blink { 50% { opacity: 0; } }
 
+.terminal-command {
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) {
+  .terminal-command {
+    display: inline-grid;
+    grid-template-columns: 1fr;
+    animation: terminal-type 1.3s both;
+  }
+
+  .terminal-command > span {
+    min-width: 0;
+    overflow: hidden;
+    white-space: pre;
+  }
+}
+
+@keyframes terminal-type {
+  from { grid-template-columns: 0fr; }
+  to { grid-template-columns: 1fr; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .reveal { opacity: 1; transform: none; }
