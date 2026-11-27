@@ -25,7 +25,6 @@ section{padding:36px 0 60px}[hidden]{display:none!important}
 .sh{display:flex;gap:10px;align-items:center;font:500 15px Jost;color:var(--mut);margin-bottom:6px}.sh .ic{width:26px;height:26px;color:var(--co)}
 .tip{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:14px 0}
 .say{border-left:4px solid var(--co);background:var(--card);padding:12px 14px;border-radius:10px;min-height:3.4em;margin-bottom:16px}.say.bad{border-color:#b00020}
-.nav{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.dots{display:flex;gap:6px;margin-left:auto}.dots button{width:12px;height:12px;border-radius:50%;border:2px solid var(--br);background:none;padding:0;cursor:pointer}.dots button[aria-current="step"]{background:var(--br)}
 .lnk{background:none;border:0;color:var(--mut);text-decoration:underline;font:inherit;cursor:pointer;margin-top:12px;padding:0}
 @media(min-width:900px){.hero{grid-template-columns:1.1fr .9fr}.tour{grid-template-columns:minmax(0,1fr) 360px;gap:48px}}
 details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px}summary{cursor:pointer;padding:14px 16px;font:500 17px Jost;list-style:none;display:flex;justify-content:space-between;gap:12px}summary::-webkit-details-marker{display:none}summary::after{content:"+";font-size:22px;line-height:1}details[open] summary::after{content:"–"}details p{margin:0;padding:0 16px 16px;color:var(--mut)}
@@ -58,18 +57,65 @@ details{background:var(--card);border:1px solid var(--line);border-radius:12px;m
 [data-theme="kvantcode"] .phone{border-color:#192d51;box-shadow:0 16px 55px #02061780;color-scheme:light}
 .brand{display:inline-flex;align-items:center;gap:8px}
 .brand img{width:28px;height:28px}
+
+.hero-actions{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}
+.hero-preview{min-width:0}
+.tour-guide,.tour-practice,.tour-controls{min-width:0}
+.tour-guide h2:focus{outline:none}
+.tour-progress{display:block;width:100%;height:6px;margin:0 0 12px;accent-color:var(--br)}
+.practice-caption{color:var(--mut);font-size:14px;margin:0 0 8px;text-align:center}
+.tour-controls .say:empty{min-height:0;padding:0;margin:0;border:0}
+.tour-controls .nav{display:grid;grid-template-columns:auto 1fr;gap:8px}
+.step-picker{display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--mut);font-size:14px}
+.step-picker select{min-width:0;flex:1;min-height:44px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:16px}
+@media(min-width:900px){
+  .tour{grid-template-rows:auto 1fr;row-gap:16px}
+  .tour-practice{grid-column:2;grid-row:1 / span 2}
+  .tour-controls{grid-column:1;grid-row:2}
+}
+@media(max-width:899px){
+  #home,#tour{padding-top:20px}
+  #home h1{font-size:clamp(32px,8vw,52px)}
+  .hero-preview{display:none}
+  header .w{gap:4px}
+  header nav{width:100%;justify-content:space-between;flex-wrap:wrap;gap:0}
+  header nav button{min-height:44px;padding:6px clamp(2px,1vw,8px);font-size:14px}
+  .tour{display:block}
+  .tour-guide h2{margin-bottom:8px}
+  #sd{margin:0;color:var(--mut)}
+  .tip{margin:10px 0 14px;padding:10px 12px}
+  .tour-practice .phone{width:min(100%,520px);height:auto;min-height:0;border-width:4px;border-radius:18px}
+  .tour-practice .ms{overflow:visible}
+  .tour-practice :is(input,select,textarea,button){min-height:44px;font-size:16px}
+  .tour-practice .mb.q{width:44px}
+  .tour-controls{position:sticky;bottom:0;z-index:5;margin-top:12px;background:var(--bg);padding:10px 0 max(8px,env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+  .tour-controls .say{font-size:14px;min-height:0;margin-bottom:8px;padding:6px 10px}
+  .tour-controls .nav .btn{min-height:44px;padding:8px}
+  .tour-guide .lnk{margin:4px 0 10px;min-height:44px}
+}
 </style></head><body>
 <header><div class="w"><span class="brand"><img src="/kvantcode-favicon-48.png" width="28" height="28" alt="">KvantCode</span><nav aria-label="Secciones"><button data-v="home">Bienvenida</button><button data-v="tour">Recorrido</button><button data-v="plans">Versiones</button><button data-v="faq">Preguntas</button></nav></div></header>
 <main class="w">
 <section id="home"><div class="hero"><div><span class="chip">15 días gratis, sin tarjeta</span><h1>Tu negocio en orden, desde el celular o la compu</h1><p class="l">Registra tus productos, anota ventas y gastos, y guarda tus pendientes. Sin planillas ni cuentas complicadas.</p>
-<ul class="ben" id="ben"></ul><button class="btn" data-v="tour">Empezar el recorrido</button> <button class="btn s" data-v="plans">Ver versiones y planes</button> <button class="btn s" data-v="faq">Preguntas frecuentes</button></div>
-<div><div class="phone" id="hero" aria-label="Vista de ejemplo de la pantalla de Inicio"></div></div></div></section>
-<section id="tour" hidden><div class="tour"><div>
-<div class="sh" id="sh"></div><h2 id="st"></h2><p id="sd"></p><div class="tip" id="tip"></div>
+<div class="hero-actions"><button class="btn" data-v="tour">Empezar el recorrido</button><button class="btn s" data-v="plans">Ver versiones y planes</button><button class="btn s" data-v="faq">Preguntas frecuentes</button></div><ul class="ben" id="ben"></ul></div>
+<div class="hero-preview"><div class="phone" id="hero" aria-label="Vista de ejemplo de la pantalla de Inicio"></div></div></div></section>
+<section id="tour" hidden><div class="tour">
+<div class="tour-guide">
+<div class="sh" id="sh"></div>
+<progress class="tour-progress" id="progress" aria-label="Progreso del recorrido"></progress>
+<h2 id="st" tabindex="-1"></h2><p id="sd"></p><div class="tip" id="tip"></div>
+<label class="step-picker">Ir a un paso<select id="steps"></select></label>
+<button class="lnk" data-a="reset">Reiniciar la práctica</button>
+</div>
+<div class="tour-practice">
+<p class="practice-caption" id="practice-note">Simulador interactivo. Tus cambios de práctica no se guardan.</p>
+<div class="phone" id="screen" role="group" aria-labelledby="practice-note"></div>
+</div>
+<div class="tour-controls">
 <div class="say" id="say" role="status" aria-live="polite"></div>
-<div class="nav"><button class="btn s" id="prev">Anterior</button><button class="btn" id="next">Siguiente</button><div class="dots" id="dots"></div></div>
-<button class="lnk" data-a="reset">Reiniciar la práctica</button></div>
-<div><div class="phone" id="screen" aria-label="Práctica interactiva: puedes tocar todo sin miedo a romper nada"></div><p style="text-align:center;color:var(--mut);font-size:14px">Es una simulación: nada de lo que hagas aquí se guarda.</p></div></div></section>
+<div class="nav"><button class="btn s" id="prev">Anterior</button><button class="btn" id="next">Siguiente</button></div>
+</div>
+</div></section>
 <section id="plans" hidden><h2>Elige tu versión</h2><p class="l2">Todas incluyen 15 días de prueba gratis, sin tarjeta. Toca una versión para ver qué módulos tendrás.</p><div class="pl" id="pl"></div>
 <h2 id="mh" style="font-size:28px"></h2><div class="mods" id="mods"></div><p class="say" id="mdx" role="status" aria-live="polite" style="margin-top:12px"></p>
 <h2 style="font-size:28px;margin-top:28px">Comparación</h2><div class="tw" id="cmp"></div><div class="tip"><b>Sobre el mantenimiento mensual:</b> mantiene activas las funciones de Premium y Premium Plus+. Si lo pausas, tu app vuelve a las funciones de Basic y conservas todos tus datos.</div>
@@ -195,20 +241,30 @@ $('#mods').innerHTML=MODS.map((m,i)=>`<button class="mod${m[2]>PS?' lock':''}" d
 const m=MODS[MS];$('#mdx').textContent=m[1]+': '+m[3]+(m[2]>PS?' Disponible desde '+PLANS[m[2]].n+'.':' Incluido en '+PLANS[PS].n+'.')
 const y='<td class="y" aria-label="Incluido">✓</td>',n='<td class="n" aria-label="No incluido">—</td>'
 $('#cmp').innerHTML='<table class="cmp"><thead><tr><th>Función</th>'+PLANS.map(p=>`<th>${p.n}</th>`).join('')+'</tr></thead><tbody>'+FEAT.map(f=>`<tr><td>${f[0]}</td>${f.slice(1).map(v=>v?y:n).join('')}</tr>`).join('')+'<tr><td>Forma de pago</td><td>Pago único</td><td>Compra y mensual</td><td>Compra y mensual</td></tr></tbody></table>'}
-function render(){const s=STEPS[S.i]
-$('#screen').innerHTML=scr[s.k]();$('#hero').innerHTML=scr.inicio()
+function render({resetScroll = false} = {}){
+const s=STEPS[S.i], screen=$('#screen');
+const scrollTop=resetScroll?0:screen.querySelector('.ms')?.scrollTop||0;
+screen.innerHTML=scr[s.k]();
+screen.querySelector('.ms').scrollTop=scrollTop;
+$('#hero').innerHTML=scr.inicio()
 const c=PAL[S.pal][1];document.querySelectorAll('.phone').forEach(p=>['--p','--s','--a','--b'].forEach((v,j)=>p.style.setProperty(v,c[j])))
 $('#sh').innerHTML=`${ic(s.ico||s.k)}<span>Paso ${S.i+1} de ${STEPS.length}</span>${s.pl?`<b class="bg">Incluido desde ${s.pl}</b>`:''}`;$('#st').textContent=s.t;$('#sd').textContent=s.d;$('#tip').innerHTML='<b>Pruébalo:</b> '+esc(s.tip)
-const sy=$('#say');sy.textContent=S.say||'Toca los botones del teléfono. Aquí te contamos qué pasó.';sy.className='say'+(S.ok?'':' bad')
+const sy=$('#say');sy.textContent=S.say;sy.className='say'+(S.ok?'':' bad')
 $('#prev').disabled=S.i===0;$('#next').textContent=S.i===STEPS.length-1?'Ver versiones y planes':'Siguiente'
-$('#dots').innerHTML=STEPS.map((x,i)=>`<button data-go="${i}" aria-label="Ir al paso ${i+1}: ${x.t}" ${i===S.i?'aria-current="step"':''}></button>`).join('')}
+$('#steps').value=String(S.i);$('#progress').value=S.i+1}
 function show(v){['home','tour','plans','faq'].forEach(id=>$('#'+id).hidden=id!==v);document.querySelectorAll('nav button').forEach(b=>b.dataset.v===v?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));scrollTo(0,0)}
-function go(i){S.i=i;S.say='';S.ok=1;render()}
-document.addEventListener('click',e=>{const pl=e.target.closest('[data-pl]');if(pl){PS=+pl.dataset.pl;plans();$('[data-pl="'+PS+'"]').focus();return}const md=e.target.closest('[data-md]');if(md){MS=+md.dataset.md;plans();$('[data-md="'+MS+'"]').focus();return}const v=e.target.closest('[data-v]');if(v)return show(v.dataset.v)
-const g=e.target.closest('[data-go]');if(g)return go(+g.dataset.go)
-const b=e.target.closest('[data-a]');if(!b)return;ACT[b.dataset.a](b.dataset.i);render()})
+function focusStep(){
+$('#st').focus({preventScroll:true});
+scrollTo(0,0);
+}
+function go(i){S.i=i;S.say='';S.ok=1;render({resetScroll:true});focusStep()}
+document.addEventListener('click',e=>{const pl=e.target.closest('[data-pl]');if(pl){PS=+pl.dataset.pl;plans();$('[data-pl="'+PS+'"]').focus();return}const md=e.target.closest('[data-md]');if(md){MS=+md.dataset.md;plans();$('[data-md="'+MS+'"]').focus();return}const v=e.target.closest('[data-v]');if(v){show(v.dataset.v);if(v.dataset.v==='tour')focusStep();return}
+const b=e.target.closest('[data-a]');if(!b)return;const action=b.dataset.a;ACT[action](b.dataset.i);render({resetScroll:action==='reset'});if(action==='reset')focusStep()})
 document.addEventListener('input',e=>{const k=e.target.dataset.k;if(!k)return;S.f[k]=e.target.value;if(k==='sp')S.q=1;if(k==='vl')S.f.vp=e.target.value==='2'?'6500':'8000';if(k==='vc'){const c=S.cl.find(x=>x.n===e.target.value);if(c)S.f.vk=c.c}
 if(e.target.tagName==='SELECT')render();else if(e.target.dataset.live){const p=e.target.selectionStart;render();const n=document.querySelector('[data-k="'+k+'"]');if(n){n.focus();try{n.setSelectionRange(p,p)}catch(x){}}}})
+$('#steps').innerHTML=STEPS.map((step,i)=>`<option value="${i}">${i+1}. ${esc(step.t)}</option>`).join('');
+$('#steps').onchange=e=>go(Number(e.target.value));
+$('#progress').max=STEPS.length;
 $('#prev').onclick=()=>go(S.i-1);$('#next').onclick=()=>S.i===STEPS.length-1?show('plans'):go(S.i+1)
 $('#ben').innerHTML=[['stock','Stock siempre al día','Cada venta descuenta las unidades sola.'],['gastos','Ventas y gastos claros','Ves cuánto entra, cuánto sale y cuál es tu saldo.'],['agenda','Agenda y notas','Tus citas y pendientes en un solo lugar.'],['ajustes','A tu estilo','Pon tu logo y elige tus colores. Funciona en celular y computadora.']].map(x=>`<li>${ic(x[0])}<span><b>${x[1]}</b>${x[2]}</span></li>`).join('')
 plans();show('home');render()
