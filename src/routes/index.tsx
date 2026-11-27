@@ -157,6 +157,18 @@ function Index() {
             ))}
           </div>
 
+          <div className="glow-card reveal mt-8 flex flex-col gap-5 rounded-xl p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+            <div>
+              <h3 className="text-xl font-semibold">Gestioná tu negocio con nuestra app multirrubro</h3>
+              <p className="mt-2 text-muted-foreground">
+                Explorá el recorrido interactivo y probá cómo llevar tu stock, ventas y gastos.
+              </p>
+            </div>
+            <a href="/tienda" className={`${btnPrimary} shrink-0 text-center`}>
+              Probá gratis la app
+            </a>
+          </div>
+
           {/* LISTA NUMERADA */}
           <ol className="mt-24 divide-y divide-border border-y border-border">
             {site.services.map((s, i) => (
