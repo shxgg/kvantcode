@@ -3,6 +3,10 @@
     {
       "source": "/demo",
       "destination": "/demo/index.html"
+    },
+    {
+      "source": "/tienda",
+      "destination": "/tienda/index.html"
     }
   ]
 }
