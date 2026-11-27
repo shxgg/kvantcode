@@ -63,6 +63,9 @@ details{background:var(--card);border:1px solid var(--line);border-radius:12px;m
 .tour-guide,.tour-practice,.tour-controls{min-width:0}
 .tour-guide h2:focus{outline:none}
 .tour-progress{display:block;width:100%;height:6px;margin:0 0 12px;accent-color:var(--br)}
+.practice-palette{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:0 auto 10px;width:min(100%,340px)}
+.practice-palette .step-picker{margin:0;flex:1;flex-wrap:wrap}
+.practice-palette .sw{padding:5px;background:var(--card);border:1px solid var(--line);border-radius:8px}
 .practice-caption{color:var(--mut);font-size:14px;margin:0 0 8px;text-align:center}
 .tour-controls .say:empty{min-height:0;padding:0;margin:0;border:0}
 .tour-controls .nav{display:grid;grid-template-columns:auto 1fr;gap:8px}
@@ -84,6 +87,7 @@ details{background:var(--card);border:1px solid var(--line);border-radius:12px;m
   .tour-guide h2{margin-bottom:8px}
   #sd{margin:0;color:var(--mut)}
   .tip{margin:10px 0 14px;padding:10px 12px}
+  .practice-palette{width:min(100%,520px)}
   .tour-practice .phone{width:min(100%,520px);height:auto;min-height:0;border-width:4px;border-radius:18px}
   .tour-practice .ms{overflow:visible}
   .tour-practice :is(input,select,textarea,button){min-height:44px;font-size:16px}
@@ -109,6 +113,7 @@ details{background:var(--card);border:1px solid var(--line);border-radius:12px;m
 </div>
 <div class="tour-practice">
 <p class="practice-caption" id="practice-note">Simulador interactivo. Tus cambios de práctica no se guardan.</p>
+<div class="practice-palette"><label class="step-picker">Paleta del simulador<select id="palette"></select></label><span id="palette-swatches" class="sw" aria-hidden="true"></span></div>
 <div class="phone" id="screen" role="group" aria-labelledby="practice-note"></div>
 </div>
 <div class="tour-controls">
@@ -247,7 +252,10 @@ const scrollTop=resetScroll?0:screen.querySelector('.ms')?.scrollTop||0;
 screen.innerHTML=scr[s.k]();
 screen.querySelector('.ms').scrollTop=scrollTop;
 $('#hero').innerHTML=scr.inicio()
-const c=PAL[S.pal][1];document.querySelectorAll('.phone').forEach(p=>['--p','--s','--a','--b'].forEach((v,j)=>p.style.setProperty(v,c[j])))
+const c=PAL[S.pal][1];
+$('#palette').value=String(S.pal);
+$('#palette-swatches').innerHTML=c.map(color=>`<i style="background:${color}"></i>`).join('');
+document.querySelectorAll('.phone').forEach(p=>['--p','--s','--a','--b'].forEach((v,j)=>p.style.setProperty(v,c[j])))
 $('#sh').innerHTML=`${ic(s.ico||s.k)}<span>Paso ${S.i+1} de ${STEPS.length}</span>${s.pl?`<b class="bg">Incluido desde ${s.pl}</b>`:''}`;$('#st').textContent=s.t;$('#sd').textContent=s.d;$('#tip').innerHTML='<b>Pruébalo:</b> '+esc(s.tip)
 const sy=$('#say');sy.textContent=S.say;sy.className='say'+(S.ok?'':' bad')
 $('#prev').disabled=S.i===0;$('#next').textContent=S.i===STEPS.length-1?'Ver versiones y planes':'Siguiente'
@@ -262,6 +270,8 @@ document.addEventListener('click',e=>{const pl=e.target.closest('[data-pl]');if(
 const b=e.target.closest('[data-a]');if(!b)return;const action=b.dataset.a;ACT[action](b.dataset.i);render({resetScroll:action==='reset'});if(action==='reset')focusStep()})
 document.addEventListener('input',e=>{const k=e.target.dataset.k;if(!k)return;S.f[k]=e.target.value;if(k==='sp')S.q=1;if(k==='vl')S.f.vp=e.target.value==='2'?'6500':'8000';if(k==='vc'){const c=S.cl.find(x=>x.n===e.target.value);if(c)S.f.vk=c.c}
 if(e.target.tagName==='SELECT')render();else if(e.target.dataset.live){const p=e.target.selectionStart;render();const n=document.querySelector('[data-k="'+k+'"]');if(n){n.focus();try{n.setSelectionRange(p,p)}catch(x){}}}})
+$('#palette').innerHTML=PAL.map(([name],i)=>`<option value="${i}">${esc(name)}</option>`).join('');
+$('#palette').onchange=e=>{ACT.pal(e.target.value);render()};
 $('#steps').innerHTML=STEPS.map((step,i)=>`<option value="${i}">${i+1}. ${esc(step.t)}</option>`).join('');
 $('#steps').onchange=e=>go(Number(e.target.value));
 $('#progress').max=STEPS.length;
