@@ -49,7 +49,7 @@ function Logo({ footer = false }: { footer?: boolean }) {
       alt="kvantcode"
       className={footer
         ? "block h-auto w-full max-w-[205px] object-contain object-left sm:max-w-[220px]"
-        : "h-14 w-auto max-w-[310px] object-contain sm:h-16 sm:max-w-[350px]"}
+        : "block h-auto w-full max-w-[168px] object-contain object-left sm:max-w-[220px] lg:max-w-[290px] xl:max-w-[310px]"}
     />
   );
 }
@@ -75,19 +75,19 @@ function Index() {
 
       {/* NAVBAR */}
       <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/70 backdrop-blur-xl">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4" aria-label="Principal">
-          <a href="#top" aria-label="kvantcode inicio"><Logo /></a>
-          <ul className="hidden items-center gap-8 md:flex">
+        <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4" aria-label="Principal">
+          <a href="#top" className="min-w-0" aria-label="kvantcode inicio"><Logo /></a>
+          <ul className="hidden shrink-0 items-center gap-5 lg:flex xl:gap-8">
             {site.nav.map((n) => (
               <li key={n.href}>
                 <a href={n.href} className="text-sm text-muted-foreground transition hover:text-foreground">{n.label}</a>
               </li>
             ))}
           </ul>
-          <div className="flex items-center gap-3">
-            <a href={whatsappUrl()} target="_blank" rel="noreferrer" className={`${btnPrimary} hidden px-4 py-2 text-sm sm:inline-flex`}>Hablemos</a>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <a href={whatsappUrl()} target="_blank" rel="noreferrer" className={`${btnPrimary} min-h-11 whitespace-nowrap !px-3 !py-2 text-sm sm:!px-4`}>Hablemos</a>
             <button
-              className="rounded-md border border-border p-2 md:hidden"
+              className="grid size-11 place-content-center rounded-md border border-border lg:hidden"
               aria-label="Abrir menú"
               aria-expanded={open}
               onClick={() => setOpen(!open)}
@@ -98,33 +98,32 @@ function Index() {
           </div>
         </nav>
         {open && (
-          <ul className="space-y-1 border-t border-border px-5 py-4 md:hidden">
+          <ul className="space-y-1 border-t border-border px-5 py-4 lg:hidden">
             {site.nav.map((n) => (
               <li key={n.href}>
                 <a href={n.href} onClick={() => setOpen(false)} className="block py-2 text-muted-foreground">{n.label}</a>
               </li>
             ))}
-            <li><a href={whatsappUrl()} target="_blank" rel="noreferrer" className={`${btnPrimary} mt-2 w-full`}>Hablemos</a></li>
           </ul>
         )}
       </header>
 
       <main id="main">
         {/* HERO */}
-        <section id="top" className="relative flex min-h-screen items-center pt-24">
+        <section id="top" className="relative flex items-center pt-20 sm:min-h-screen sm:pt-24">
           <div className="tech-grid absolute inset-0" aria-hidden />
           <div className="absolute left-1/2 top-1/3 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/30 blur-3xl" aria-hidden />
-          <div className="relative mx-auto max-w-6xl px-5 py-20">
+          <div className="relative mx-auto w-full min-w-0 max-w-6xl px-5 py-12 sm:py-20">
             <div className="reveal inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-4 py-2 font-mono text-sm">
               <span className="text-accent">{site.hero.terminal}</span>
               <span className="animate-blink inline-block h-4 w-2 bg-accent" aria-hidden />
             </div>
-            <h1 className="reveal mt-8 max-w-4xl text-5xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl">
+            <h1 className="reveal mt-6 max-w-4xl break-words text-4xl font-bold leading-[1.08] sm:mt-8 sm:text-6xl lg:text-7xl">
               {site.hero.title[0]}<br />
               <span className="text-gradient">{site.hero.title[1]}</span>
             </h1>
-            <p className="reveal mt-6 max-w-xl text-lg text-muted-foreground">{site.hero.subtitle}</p>
-            <div className="reveal mt-10 flex flex-col gap-4 sm:flex-row">
+            <p className="reveal mt-4 max-w-xl text-base text-muted-foreground sm:mt-6 sm:text-lg">{site.hero.subtitle}</p>
+            <div className="reveal mt-7 flex flex-wrap gap-3 max-sm:[&>a]:w-full sm:mt-10 sm:gap-4">
               <a href="#servicios" className={btnPrimary}>Ver servicios</a>
               <a href={whatsappUrl()} target="_blank" rel="noreferrer" className={btnGhost}>Hablemos →</a>
             </div>
@@ -143,7 +142,7 @@ function Index() {
         </div>
 
         {/* QUÉ HACEMOS */}
-        <section id="servicios" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-24">
+        <section id="servicios" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-16 sm:py-24">
           <div className="reveal"><Label>Qué hacemos</Label>
             <h2 className="mt-3 max-w-2xl text-4xl font-bold sm:text-5xl">Software que entiende de números.</h2>
           </div>
