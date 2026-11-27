@@ -115,8 +115,13 @@ function Index() {
           <div className="absolute left-1/2 top-1/3 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/30 blur-3xl" aria-hidden />
           <div className="relative mx-auto w-full min-w-0 max-w-6xl px-5 py-12 sm:py-20">
             <div className="reveal inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-4 py-2 font-mono text-sm">
-              <span className="text-accent">{site.hero.terminal}</span>
-              <span className="animate-blink inline-block h-4 w-2 bg-accent" aria-hidden />
+              <span
+                className="terminal-command min-w-0 text-accent"
+                style={{ animationTimingFunction: `steps(${Math.max(1, Array.from(site.hero.terminal).length)}, end)` }}
+              >
+                <span>{site.hero.terminal}</span>
+              </span>
+              <span className="animate-blink inline-block h-4 w-2 shrink-0 bg-accent" aria-hidden />
             </div>
             <h1 className="reveal mt-6 max-w-4xl break-words text-4xl font-bold leading-[1.08] sm:mt-8 sm:text-6xl lg:text-7xl">
               {site.hero.title[0]}<br />
